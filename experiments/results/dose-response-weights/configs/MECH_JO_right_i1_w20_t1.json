@@ -1,0 +1,28 @@
+{
+  "warmupTicks": 20,
+  "windowTicks": 50,
+  "noise": {
+    "rate": 0.005,
+    "amplitude": 1
+  },
+  "readout": {
+    "superClass": "descending",
+    "minSpikes": 10,
+    "margin": 0.2
+  },
+  "name": "dose-response-weights/runs/MECH_JO_right_i1_w20_t1",
+  "trials": 20,
+  "seed": 3000,
+  "stimulus": {
+    "groups": [
+      "MECH_JO"
+    ],
+    "left": 0,
+    "right": 1,
+    "balance": true
+  },
+  "weightScale": 20,
+  "params": {
+    "threshold": 1
+  }
+}
