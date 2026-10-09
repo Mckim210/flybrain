@@ -24,7 +24,8 @@ var DEFAULTS = {
 	noise: { rate: 0.005, amplitude: 1.0 },
 	stimulus: null,
 	readout: { superClass: 'descending', minSpikes: 10, margin: 0.2 },
-	params: null
+	params: null,
+	weightScale: 1
 };
 
 function parseArgs(argv) {
