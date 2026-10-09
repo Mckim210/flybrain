@@ -1,0 +1,17 @@
+{
+  "_comment": "기본 모델(dose-response)에서 신호가 너무 작아 선택이 바뀌지 않아서, 실험용 가중치 배율(weightScale)을 키워 다시 시도. 세기 1·2·5는 기본 모델에서 결과가 같았으므로(감각뉴런 발화 포화) 0.15·0.5·1만 사용. 웹 앱 기본값은 그대로.",
+  "name": "dose-response-weights",
+  "trials": 20,
+  "seed": 3000,
+  "groups": ["VIS_R1R6", "OLF_ORN_FOOD", "MECH_JO"],
+  "intensities": [0.15, 0.5, 1],
+  "weightScales": [10, 20, 40],
+  "thresholds": [1.0],
+  "includeBaseline": true,
+  "base": {
+    "warmupTicks": 20,
+    "windowTicks": 50,
+    "noise": { "rate": 0.005, "amplitude": 1.0 },
+    "readout": { "superClass": "descending", "minSpikes": 10, "margin": 0.2 }
+  }
+}
