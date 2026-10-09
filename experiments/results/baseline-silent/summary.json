@@ -1,0 +1,47 @@
+{
+  "config": {
+    "name": "baseline-silent",
+    "trials": 100,
+    "seed": 2026,
+    "warmupTicks": 20,
+    "windowTicks": 50,
+    "noise": {
+      "rate": 0,
+      "amplitude": 0
+    },
+    "stimulus": null,
+    "readout": {
+      "superClass": "descending",
+      "minSpikes": 10,
+      "margin": 0.2
+    },
+    "params": null
+  },
+  "trials": 100,
+  "counts": {
+    "left": 0,
+    "right": 0,
+    "none": 100,
+    "none_too_few_spikes": 100,
+    "none_too_close": 0
+  },
+  "decided": 0,
+  "left_share_of_decided": null,
+  "left_share_95ci": [
+    0,
+    1
+  ],
+  "binomial_p_two_sided": 1,
+  "readout_spikes_total": {
+    "left": 0,
+    "right": 0
+  },
+  "lateralization_d": {
+    "n": 0,
+    "mean": null,
+    "lo": null,
+    "hi": null
+  },
+  "top_groups_by_spikes": [],
+  "seconds": 1.386
+}
