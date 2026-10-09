@@ -37,6 +37,7 @@ function runTrial(brain, cfg, out, trialSeed) {
 	var rng = makeRng(trialSeed);
 	brain.reset();
 	if (cfg.params) brain.setParams(cfg.params);
+	brain.setWeightScale(cfg.weightScale || 1);
 	brain.setNoise(cfg.noise.rate, cfg.noise.amplitude, rng);
 
 	for (var t = 0; t < cfg.warmupTicks; t++) brain.step();
@@ -46,7 +47,9 @@ function runTrial(brain, cfg, out, trialSeed) {
 		left: cfg.stimulus.left,
 		right: cfg.stimulus.right,
 		balance: cfg.stimulus.balance,
-		rng: rng
+		// separate stream: choosing stimulus neurons must not shift the noise
+		// sequence, so every condition with the same seed sees identical noise
+		rng: makeRng(trialSeed ^ 0x5bd1e995)
 	} : null);
 
 	var spikesL = 0, spikesR = 0, totalSpikes = 0;

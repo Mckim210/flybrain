@@ -123,6 +123,9 @@ function HeadlessBrain() {
 		this.superClass[s] = ann.superClass[this.order[s]];
 	}
 
+	this._baseValues = Float32Array.from(this._ctx.values); // synapse weights as loaded
+	this._weightScale = 1;
+
 	this._stim = null;      // {indices, intensities} sustained sensory input
 	this._noise = null;     // {rate, amplitude, rng}
 	this._post = sandbox.self.onmessage;
@@ -156,6 +159,16 @@ HeadlessBrain.prototype.setParams = function (params) {
 	var msg = { type: 'setParams' };
 	for (var k in params) msg[k] = params[k];
 	this._post({ data: msg });
+};
+
+/* Experiment-only option: multiply every synapse weight by `scale`.
+ * The web app normalises weights so the strongest synapse is 0.15
+ * (WEIGHT_SCALE in sim-worker.js); scale 1 keeps exactly that. */
+HeadlessBrain.prototype.setWeightScale = function (scale) {
+	if (scale === this._weightScale) return;
+	var v = this._ctx.values, base = this._baseValues;
+	for (var j = 0; j < v.length; j++) v[j] = base[j] * scale;
+	this._weightScale = scale;
 };
 
 /* Left/right sensory stimulation.

@@ -1,0 +1,17 @@
+{
+  "_comment": "용량-반응: 3개 감각 그룹 x 5개 세기 x 왼쪽만/오른쪽만. 모든 조건이 같은 시드를 써서 시행끼리 짝지어 비교한다. 웹 앱 기본 모델(가중치 배율 1, 문턱 1.0).",
+  "name": "dose-response",
+  "trials": 20,
+  "seed": 3000,
+  "groups": ["VIS_R1R6", "OLF_ORN_FOOD", "MECH_JO"],
+  "intensities": [0.15, 0.5, 1, 2, 5],
+  "weightScales": [1],
+  "thresholds": [1.0],
+  "includeBaseline": true,
+  "base": {
+    "warmupTicks": 20,
+    "windowTicks": 50,
+    "noise": { "rate": 0.005, "amplitude": 1.0 },
+    "readout": { "superClass": "descending", "minSpikes": 10, "margin": 0.2 }
+  }
+}

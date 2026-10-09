@@ -20,6 +20,23 @@ node experiments/run-trials.js --config experiments/config/baseline-noise.json -
 
 시행 1회(70틱)에 약 6~7초 걸립니다(뇌 전체가 활성일 때 틱당 약 90ms, 4코어 컨테이너 기준).
 
+## 용량-반응 스윕 (여러 조건 한꺼번에)
+
+```bash
+# 자극 그룹 x 세기 x (왼쪽만 / 오른쪽만), 조건마다 20회, CPU 코어 수만큼 병렬
+node experiments/sweep.js --config experiments/config/dose-response.json
+# 실험용 가중치 배율(weightScale)을 바꿔 같은 스윕
+node experiments/sweep.js --config experiments/config/dose-response-weights.json
+# 이미 돌린 결과로 표만 다시 만들기
+node experiments/sweep.js --config experiments/config/dose-response.json --only-table
+```
+
+- 모든 조건이 **같은 시드**를 씁니다. 그래서 "왼쪽만 자극" i번째 시행과 "오른쪽만 자극" i번째 시행은 배경 잡음이 완전히 같고,
+  둘의 차이 `Δd = d(왼쪽만) − d(오른쪽만)`는 자극 쪽 때문에 생긴 차이만 남습니다(짝지은 비교).
+- `Δd`의 95% 신뢰구간이 0을 포함하지 않으면 표에 **신호 있음**으로 표시합니다. 조건이 많으면 우연히 하나쯤 걸릴 수 있으니(다중비교) 여러 세기에서 일관된지 함께 보세요.
+- 결과: `experiments/results/<name>/table.md`, `table.csv`, `summary.json`, 조건별 원자료는 `runs/` 아래.
+- 이미 끝난 조건(`summary.json`이 있는 조건)은 건너뜁니다. 조건을 바꿔 다시 돌릴 때는 `--name`을 바꾸세요.
+
 ## 한 시행의 구조
 
 1. `reset` — 모든 뉴런 전압 0
@@ -45,6 +62,7 @@ node experiments/run-trials.js --config experiments/config/baseline-noise.json -
 | `readout.superClass` / `readout.group` | 판독할 출력 뉴런(기본 하행 뉴런). `group`으로 `GNG_DESC` 등 지정 가능 |
 | `readout.minSpikes`, `readout.margin` | 무반응 판정 기준 |
 | `params` | (선택) `leakRate`, `threshold`, `refractoryPeriod` 덮어쓰기 |
+| `weightScale` | (실험용) 모든 시냅스 가중치에 곱하는 배율. 기본 1 = 웹 앱과 동일. 헤드리스 러너에서만 적용됨 |
 
 좌/우는 FlyWire `classification.csv`의 `side` 열(세포체가 있는 쪽)을 그대로 씁니다.
 

@@ -1,0 +1,28 @@
+{
+  "warmupTicks": 20,
+  "windowTicks": 50,
+  "noise": {
+    "rate": 0.005,
+    "amplitude": 1
+  },
+  "readout": {
+    "superClass": "descending",
+    "minSpikes": 10,
+    "margin": 0.2
+  },
+  "name": "dose-response/runs/VIS_R1R6_left_i1_w1_t1",
+  "trials": 20,
+  "seed": 3000,
+  "stimulus": {
+    "groups": [
+      "VIS_R1R6"
+    ],
+    "left": 1,
+    "right": 0,
+    "balance": true
+  },
+  "weightScale": 1,
+  "params": {
+    "threshold": 1
+  }
+}
