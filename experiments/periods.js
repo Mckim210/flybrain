@@ -105,12 +105,14 @@ function table(cfgs) {
 	var allResiduals = [];
 	rows.forEach(function (r) {
 		var s = r.s, f = s.fly, w = s.window;
-		var label = r.cfg.label || '';
+		var label = r.cfg.label || 'STONKFLY 기간';
 		var net = w.finalPrice / w.startPrice - 1; // same definition as select-periods.js
 		var feesFly = r.runs.reduce(function (t, x) { return t + x.fees; }, 0) / r.runs.length;
 		var diff = f.pnl.mean - s.rule.pnl, feeDiff = s.rule.fees - feesFly;
 		var res = f.residualVsSameOrders;
-		r.runs.forEach(function (x) { allResiduals.push(x.residual); });
+		var lookahead = r.cfg.fly.fullScaleReturn === 'max';
+		if (lookahead) label = (label ? label + ' ' : '') + '(참고: 이전 "max" 기준, 미래 정보 사용 — 합계에서 제외)';
+		else r.runs.forEach(function (x) { allResiduals.push(x.residual); });
 		md.push('| ' + w.from.slice(0, 16).replace('T', ' ') + ' ~ ' + w.to.slice(5, 16).replace('T', ' ') + ' | ' + label + ' | ' + pct(net) + ' | ' +
 			money(f.pnl.mean) + ' [' + money(f.pnl.min) + ' ~ ' + money(f.pnl.max) + '] (' + f.pnl.n + '회) | ' + f.ordersMean.toFixed(1) + ' | ' +
 			money(s.rule.pnl) + ' (' + s.rule.orders + ') | ' + money(s.random.pnl.mean) + ' | ' +
@@ -124,7 +126,7 @@ function table(cfgs) {
 	});
 	var pooled = stats.meanCI(allResiduals);
 	md.push('');
-	md.push('- 모든 기간의 초파리 실행 ' + pooled.n + '회를 합친 잔차(같은 주문 수 무작위 대비): ' + money(pooled.mean) +
+	md.push('- 모든 기간(미래 정보를 쓰지 않는 설정)의 초파리 실행 ' + pooled.n + '회를 합친 잔차(같은 주문 수 무작위 대비): ' + money(pooled.mean) +
 		' (95% CI ' + money(pooled.lo) + ' ~ ' + money(pooled.hi) + ')');
 	var out = path.join(__dirname, 'results', 'periods');
 	fs.mkdirSync(out, { recursive: true });

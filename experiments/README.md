@@ -50,6 +50,23 @@ node experiments/sweep.js --config experiments/config/dose-response.json --only-
 - STONKFLY 기간 거래 실험(`results/trade-stonkfly-window`): 초파리 30회 손익 평균 −$0.00(범위 −$0.50 ~ +$0.94),
   규칙 투자자 −$1.10(주문 22건·수수료 $1.32, 수수료가 없었다면 +$0.22), 무작위 1만 명 평균 −$0.15.
   초파리는 74%를 보유했고, 움직일 때는 거의 규칙과 같은 방향(정반대 1.9%). 손익은 같은 행동 비율의 무작위 집단과 구별되지 않음(백분위 평균 47%).
+  단, 이 실행은 자극 세기 기준(`fullScaleReturn: "max"`)이 기간 전체의 최대 수익률을 써서 미래 정보를 썼음.
+- 미래 정보를 뺀 재실행(`fullScaleReturn: 0.01`, 같은 시드, `results/trade-stonkfly-window-fixed1pct`): 초파리 평균 +$0.03
+  (이전 −$0.00, 짝지은 차이 +$0.03 [95% CI −$0.03 ~ +$0.09], 30회 중 12회는 완전히 같은 결과) → 결론 그대로.
+- 다른 기간 5개(`select-periods.js`로 수익률 백분위 10·25·50·75·90 기준 선택, 상승 2·하락 2·횡보 1, 초파리 각 10회):
+  통합 표 `results/periods/summary.md`. 모든 기간에서 초파리 10/10회가 규칙 투자자보다 나았지만,
+  같은 주문 건수를 체결한 무작위 투자자와 비교한 잔차는 80회 합계 −$0.01 [−$0.06 ~ +$0.03] → **초파리 손익은 거래 횟수로 설명됨**.
+
+## 여러 기간 비교
+
+```bash
+node experiments/select-periods.js        # 기간 5개 선택 → config/periods/*.json, results/periods/selection.md
+node experiments/periods.js experiments/config/trade-stonkfly-window-fixed1pct.json experiments/config/periods/*.json
+node experiments/periods.js --only-table <같은 설정 파일들>   # 표만 다시
+```
+
+- `btcusd_1h.csv`의 타임스탬프는 원래 모두 `1`이어서 `prices/fix-1h-timestamps.js`로 복원함(근거는 `prices/DATA_SOURCE.md`).
+- 1시간봉 기간 = 연속 27개 종가(26시간) → 결정 26회, 마지막 종가로 평가. 시각은 봉이 끝나는 시각(종가 시각)으로 표기.
 
 ## 초파리 투자자 vs 규칙 투자자 vs 무작위 투자자
 
