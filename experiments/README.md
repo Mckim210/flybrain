@@ -57,6 +57,30 @@ node experiments/sweep.js --config experiments/config/dose-response.json --only-
   통합 표 `results/periods/summary.md`. 모든 기간에서 초파리 10/10회가 규칙 투자자보다 나았지만,
   같은 주문 건수를 체결한 무작위 투자자와 비교한 잔차는 80회 합계 −$0.01 [−$0.06 ~ +$0.03] → **초파리 손익은 거래 횟수로 설명됨**.
 
+- 수수료 반사실(`fee-counterfactual.js`, 결정은 그대로 두고 수수료만 변경, `results/fee-counterfactual/table.md`):
+  초파리가 규칙 투자자보다 나은 회차 0.6% 80/80 → 0.1% 63/80 → **0% 45/80(56%)**. 기간 평균 차이(초파리 − 규칙)는
+  0.6%에서 +$1.11, 0%에서 −$0.05 → **수수료가 없으면 우위가 사라짐**(2025-09-10 상승장에서는 규칙이 +$0.68 앞섬).
+- 매핑 반전(오르면 오른쪽 눈, 같은 시드 6기간 × 10회, `results/reversed/comparison.md`):
+  거래 방향이 규칙과 같은 비율 91% → 10%로 뒤집힘. 상승·하락 시간이 한쪽으로 쏠린 기간은 매수/매도 비율도 뒤집힘
+  (예: 2026-07-31 매수 5%·매도 13% → 12%·5%). 하지만 손익은 반대 규칙 투자자(−$0.68 ~ −$2.40)와 비슷해지지 않고
+  0 근처(−$0.32 ~ +$0.16)에 머묾 — 78~88%를 보유해서 거래가 적기 때문. 같은 주문 수 무작위 대비 잔차 +$0.01 [−$0.03, +$0.05].
+- 그림: `results/figures/summary.html`(.png) 6개 기간 요약, `results/figures/neurons-buy.html`(.png) 매수 결정 1회의 뉴런 지도.
+
+## 수수료·매핑·그림 명령어
+
+```bash
+node experiments/fee-counterfactual.js experiments/config/trade-stonkfly-window-fixed1pct.json experiments/config/periods/*.json
+node experiments/periods.js --out reversed experiments/config/reversed/stonkfly.json experiments/config/reversed/p2*.json
+node experiments/compare-mapping.js
+node experiments/figure-summary.js
+node experiments/figure-neurons.js --config experiments/config/trade-stonkfly-window-fixed1pct.json [--decision 5 --repeat 0]
+```
+
+- `fly.mapping: "reversed"`: 오르면 오른쪽 눈, 내리면 왼쪽 눈(판정은 그대로 왼쪽 = 매수).
+- `figure-neurons.js`는 저장된 결정을 같은 시드로 다시 재생하고, 저장값과 다르면 멈춘다(재현성 확인).
+  좌우는 FlyWire `side` 열 기준이며 이 데이터에서 side=left 뉴런이 그림 왼쪽에 모여 있음(평균 x 0.29 vs 0.78).
+- PNG는 HTML을 브라우저(Chromium)로 열어 캡처한 것.
+
 ## 여러 기간 비교
 
 ```bash
