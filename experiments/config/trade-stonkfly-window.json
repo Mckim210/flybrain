@@ -1,0 +1,31 @@
+{
+  "_comment": "STONKFLY '$1 이익' 기간(2026-09-10 11:34 ~ 09-11 14:14 UTC, Bitstamp 1분봉)에 1시간마다 한 번 결정. 채택 설정(weightScale 20, VIS_R1R6, 최대 세기 1). 오르면 왼쪽 눈, 내리면 오른쪽 눈. 왼쪽 선택 = 매수, 오른쪽 = 매도, 무반응 = 보유.",
+  "name": "trade-stonkfly-window",
+  "prices": "experiments/prices/btcusd_stonkfly_window_1min.csv",
+  "intervalMin": 60,
+  "rules": {
+    "capital": 100,
+    "orderUsd": 10,
+    "feeRate": 0.006,
+    "reserveRate": 0.02,
+    "maxOrdersPerDay": 24
+  },
+  "fly": {
+    "repeats": 30,
+    "seed": 500000,
+    "stimulusGroups": ["VIS_R1R6"],
+    "maxIntensity": 1,
+    "fullScaleReturn": "max",
+    "weightScale": 20,
+    "warmupTicks": 20,
+    "windowTicks": 50,
+    "noise": { "rate": 0.005, "amplitude": 1.0 },
+    "readout": { "superClass": "descending", "minSpikes": 10, "margin": 0.2 }
+  },
+  "random": {
+    "investors": 10000,
+    "seed": 777,
+    "probs": { "buy": 0.3333333333, "sell": 0.3333333333, "hold": 0.3333333334 }
+  },
+  "concurrency": 4
+}
