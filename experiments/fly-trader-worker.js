@@ -6,6 +6,7 @@
  * For each repeat and each hourly decision point, one choice trial:
  *   price went up   -> stimulate the LEFT eye  (VIS_R1R6 left neurons)
  *   price went down -> stimulate the RIGHT eye
+ *   (fly.mapping = "reversed" swaps the eyes; see lib/trade-common.js)
  *   intensity = maxIntensity x min(1, |return| / fullScaleReturn)
  * The trial's choice (left / right / none) becomes buy / sell / hold.
  * The brain is reset before every decision, so each hour is judged on its own.
@@ -40,25 +41,12 @@ function main() {
 		if (fs.existsSync(file)) return;
 		var decisions = points.map(function (p, j) {
 			var amp = common.intensityFor(cfg, p.ret, fullScale);
-			var tcfg = {
-				warmupTicks: cfg.fly.warmupTicks,
-				windowTicks: cfg.fly.windowTicks,
-				noise: cfg.fly.noise,
-				weightScale: cfg.fly.weightScale,
-				params: cfg.fly.params || null,
-				readout: cfg.fly.readout,
-				stimulus: amp > 0 ? {
-					groups: cfg.fly.stimulusGroups,
-					left: p.ret > 0 ? amp : 0,
-					right: p.ret < 0 ? amp : 0,
-					balance: true
-				} : null
-			};
-			var seed = cfg.fly.seed + k * 1000 + j;
+			var tcfg = common.trialConfig(cfg, p.ret, fullScale);
+			var seed = common.trialSeed(cfg, k, j);
 			var r = trial.runTrial(brain, tcfg, out, seed);
 			return {
 				decision: j, seed: seed, ret: p.ret, intensity: amp,
-				eye: p.ret > 0 ? 'left' : (p.ret < 0 ? 'right' : 'none'),
+				eye: common.eyeFor(cfg, p.ret),
 				choice: r.choice, d: r.d, spikesL: r.spikesL, spikesR: r.spikesR,
 				action: r.choice === 'left' ? 'buy' : (r.choice === 'right' ? 'sell' : 'hold')
 			};

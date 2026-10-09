@@ -106,6 +106,12 @@ function ruleActions(points) {
 	return points.map(function (p) { return p.ret > 0 ? 'buy' : (p.ret < 0 ? 'sell' : 'hold'); });
 }
 
+/* The opposite rule: up -> sell, down -> buy (what a fly with swapped eyes
+ * would do if it always followed its eyes). */
+function reverseRuleActions(points) {
+	return points.map(function (p) { return p.ret > 0 ? 'sell' : (p.ret < 0 ? 'buy' : 'hold'); });
+}
+
 /* Random investor: each decision independently buy/sell/hold with probabilities probs. */
 function randomActions(points, rng, probs) {
 	return points.map(function () {
@@ -119,5 +125,6 @@ module.exports = {
 	decisionPoints: decisionPoints,
 	simulate: simulate,
 	ruleActions: ruleActions,
+	reverseRuleActions: reverseRuleActions,
 	randomActions: randomActions
 };

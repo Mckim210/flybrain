@@ -1,0 +1,83 @@
+{
+  "config": "experiments/config/trade-stonkfly-window-fixed1pct.json",
+  "period": "STONKFLY 기간",
+  "decision": 6,
+  "time": "2026-09-10 17:35",
+  "ret": 0.008620222769480046,
+  "intensity": 0.8620222769480046,
+  "eye": "left",
+  "repeat": 0,
+  "seed": 500005,
+  "choice": "left",
+  "action": "buy",
+  "d": 0.314086364813057,
+  "spikesL": 82,
+  "spikesR": 43,
+  "descLeftN": 647,
+  "descRightN": 650,
+  "totalSpikes": 77717,
+  "firedNeurons": 11736,
+  "weightScale": 20,
+  "topGroups": [
+    {
+      "id": 0,
+      "name": "VIS_R1R6",
+      "left": 71386,
+      "right": 209
+    },
+    {
+      "id": 2,
+      "name": "VIS_ME",
+      "left": 2115,
+      "right": 1829
+    },
+    {
+      "id": 60,
+      "name": "GENERIC_CENTRAL",
+      "left": 524,
+      "right": 487
+    },
+    {
+      "id": 17,
+      "name": "MB_KC",
+      "left": 98,
+      "right": 120
+    },
+    {
+      "id": 35,
+      "name": "GNG_DESC",
+      "left": 127,
+      "right": 86
+    },
+    {
+      "id": 5,
+      "name": "VIS_LPTC",
+      "left": 54,
+      "right": 49
+    },
+    {
+      "id": 10,
+      "name": "MECH_BRISTLE",
+      "left": 55,
+      "right": 44
+    },
+    {
+      "id": 3,
+      "name": "VIS_LO",
+      "left": 40,
+      "right": 51
+    },
+    {
+      "id": 6,
+      "name": "OLF_ORN_FOOD",
+      "left": 34,
+      "right": 41
+    },
+    {
+      "id": 26,
+      "name": "CX_PFN",
+      "left": 25,
+      "right": 42
+    }
+  ]
+}

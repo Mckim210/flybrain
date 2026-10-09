@@ -42,4 +42,41 @@ function intensityFor(cfg, ret, fullScale) {
 	return cfg.fly.maxIntensity * Math.min(1, Math.abs(ret) / fullScale);
 }
 
-module.exports = { loadTradeConfig: loadTradeConfig, loadPrices: loadPrices, fullScaleReturn: fullScaleReturn, intensityFor: intensityFor };
+/* Which eye a price move goes to. Default mapping: up -> left eye, down -> right
+ * eye. cfg.fly.mapping = "reversed" swaps them (up -> right, down -> left); the
+ * readout is unchanged (left choice = buy, right choice = sell). */
+function eyeFor(cfg, ret) {
+	if (ret === 0) return 'none';
+	var up = ret > 0;
+	if (cfg.fly.mapping === 'reversed') up = !up;
+	return up ? 'left' : 'right';
+}
+
+/* Trial settings for one decision (shared by the worker and replays). */
+function trialConfig(cfg, ret, fullScale) {
+	var amp = intensityFor(cfg, ret, fullScale);
+	var eye = eyeFor(cfg, ret);
+	return {
+		warmupTicks: cfg.fly.warmupTicks,
+		windowTicks: cfg.fly.windowTicks,
+		noise: cfg.fly.noise,
+		weightScale: cfg.fly.weightScale,
+		params: cfg.fly.params || null,
+		readout: cfg.fly.readout,
+		stimulus: amp > 0 ? {
+			groups: cfg.fly.stimulusGroups,
+			left: eye === 'left' ? amp : 0,
+			right: eye === 'right' ? amp : 0,
+			balance: true
+		} : null
+	};
+}
+
+function trialSeed(cfg, repeat, decision) {
+	return cfg.fly.seed + repeat * 1000 + decision;
+}
+
+module.exports = {
+	loadTradeConfig: loadTradeConfig, loadPrices: loadPrices, fullScaleReturn: fullScaleReturn,
+	intensityFor: intensityFor, eyeFor: eyeFor, trialConfig: trialConfig, trialSeed: trialSeed
+};

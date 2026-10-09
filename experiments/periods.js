@@ -7,7 +7,7 @@
  * All fly repeats of all configs go into one job pool (one repeat per job,
  * `--concurrency` at a time, default = CPU count), then trade.js --only-report
  * builds each period's report. The combined table is written to
- * experiments/results/periods/summary.md and summary.csv.
+ * experiments/results/<--out, default periods>/summary.md and summary.csv.
  *
  * "Is the fly's P&L explained by its number of trades?" is checked two ways:
  *   residual  = fly P&L − average P&L of random investors (fly's action rates)
@@ -28,6 +28,7 @@ function parseArgs(argv) {
 	for (var i = 2; i < argv.length; i++) {
 		if (argv[i] === '--only-table') a.onlyTable = true;
 		else if (argv[i] === '--concurrency') a.concurrency = +argv[++i];
+		else if (argv[i] === '--out') a.out = argv[++i];
 		else a.configs.push(argv[i]);
 	}
 	return a;
@@ -84,10 +85,10 @@ function main() {
 			}, Promise.resolve());
 		});
 	}
-	p.then(function () { table(cfgs); }).catch(function (err) { console.error(err.message); process.exit(1); });
+	p.then(function () { table(cfgs, a.out || 'periods'); }).catch(function (err) { console.error(err.message); process.exit(1); });
 }
 
-function table(cfgs) {
+function table(cfgs, outName) {
 	var rows = cfgs.map(function (c) {
 		var dir = path.join(__dirname, 'results', c.cfg.name);
 		var s = JSON.parse(fs.readFileSync(path.join(dir, 'summary.json'), 'utf8'));
@@ -128,7 +129,7 @@ function table(cfgs) {
 	md.push('');
 	md.push('- 모든 기간(미래 정보를 쓰지 않는 설정)의 초파리 실행 ' + pooled.n + '회를 합친 잔차(같은 주문 수 무작위 대비): ' + money(pooled.mean) +
 		' (95% CI ' + money(pooled.lo) + ' ~ ' + money(pooled.hi) + ')');
-	var out = path.join(__dirname, 'results', 'periods');
+	var out = path.join(__dirname, 'results', outName);
 	fs.mkdirSync(out, { recursive: true });
 	fs.writeFileSync(path.join(out, 'summary.md'), md.join('\n') + '\n');
 	fs.writeFileSync(path.join(out, 'summary.csv'), csv.join('\n') + '\n');

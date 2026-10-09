@@ -1,0 +1,46 @@
+{
+  "_comment": "매핑 반전: 가격이 오르면 오른쪽 눈, 내리면 왼쪽 눈(fly.mapping \"reversed\"). 나머지는 trade-stonkfly-window-fixed1pct.json와 같고, 시드도 같아서 반복 0~9는 원래 실험과 같은 잡음으로 짝지어 비교됨.",
+  "name": "reversed/stonkfly",
+  "prices": "experiments/prices/btcusd_stonkfly_window_1min.csv",
+  "intervalMin": 60,
+  "rules": {
+    "capital": 100,
+    "orderUsd": 10,
+    "feeRate": 0.006,
+    "reserveRate": 0.02,
+    "maxOrdersPerDay": 24
+  },
+  "fly": {
+    "repeats": 10,
+    "seed": 500000,
+    "stimulusGroups": [
+      "VIS_R1R6"
+    ],
+    "maxIntensity": 1,
+    "fullScaleReturn": 0.01,
+    "weightScale": 20,
+    "warmupTicks": 20,
+    "windowTicks": 50,
+    "noise": {
+      "rate": 0.005,
+      "amplitude": 1.0
+    },
+    "readout": {
+      "superClass": "descending",
+      "minSpikes": 10,
+      "margin": 0.2
+    },
+    "mapping": "reversed"
+  },
+  "random": {
+    "investors": 10000,
+    "seed": 777,
+    "probs": {
+      "buy": 0.3333333333,
+      "sell": 0.3333333333,
+      "hold": 0.3333333334
+    }
+  },
+  "concurrency": 4,
+  "label": "STONKFLY 기간"
+}

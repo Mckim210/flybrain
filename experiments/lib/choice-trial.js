@@ -33,7 +33,7 @@ function prepareReadout(brain, readout) {
 	return { left: Uint32Array.from(left), right: Uint32Array.from(right) };
 }
 
-function runTrial(brain, cfg, out, trialSeed) {
+function runTrial(brain, cfg, out, trialSeed, recordNeurons) {
 	var rng = makeRng(trialSeed);
 	brain.reset();
 	if (cfg.params) brain.setParams(cfg.params);
@@ -56,6 +56,8 @@ function runTrial(brain, cfg, out, trialSeed) {
 	var G = brain.groupNames.length;
 	var groupL = new Float64Array(G), groupR = new Float64Array(G);
 	var gid = brain.sortedGroupId, side = brain.side, N = brain.N;
+	// optional: spikes per neuron during the window (sorted index space), for figures
+	var perNeuron = recordNeurons ? new Uint16Array(N) : null;
 
 	for (var t = 0; t < cfg.windowTicks; t++) {
 		var fired = brain.step();
@@ -64,6 +66,7 @@ function runTrial(brain, cfg, out, trialSeed) {
 		for (var i = 0; i < N; i++) {
 			if (!fired[i]) continue;
 			totalSpikes++;
+			if (perNeuron) perNeuron[i]++;
 			if (side[i] === 'left') groupL[gid[i]]++;
 			else if (side[i] === 'right') groupR[gid[i]]++;
 		}
@@ -94,7 +97,8 @@ function runTrial(brain, cfg, out, trialSeed) {
 		stimNeuronsL: stimSizes.left,
 		stimNeuronsR: stimSizes.right,
 		groupL: groupL,
-		groupR: groupR
+		groupR: groupR,
+		perNeuron: perNeuron
 	};
 }
 

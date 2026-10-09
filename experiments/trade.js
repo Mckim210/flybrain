@@ -198,7 +198,7 @@ function report(cfg, outDir, flyDir) {
 		var n = flyRuns.length;
 		return {
 			decision: j + 1, time: pt.iso, price: pt.price, ret: pt.ret,
-			eye: pt.ret > 0 ? 'left' : (pt.ret < 0 ? 'right' : 'none'),
+			eye: common.eyeFor(cfg, pt.ret),
 			intensity: common.intensityFor(cfg, pt.ret, fullScale),
 			rule: ruleAct[j], buy: c.buy / n, sell: c.sell / n, hold: c.hold / n,
 			followsRule: (ruleAct[j] === 'hold' ? c.hold : c[ruleAct[j]]) / n,
