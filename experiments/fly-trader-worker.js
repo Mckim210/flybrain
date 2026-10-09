@@ -28,7 +28,7 @@ function main() {
 	var outDir = path.join(__dirname, 'results', cfg.name, 'fly');
 	fs.mkdirSync(outDir, { recursive: true });
 
-	var prices = market.loadPrices(path.join(__dirname, '..', cfg.prices));
+	var prices = common.loadPrices(cfg);
 	var points = market.decisionPoints(prices, cfg.intervalMin);
 	var fullScale = common.fullScaleReturn(cfg, points);
 

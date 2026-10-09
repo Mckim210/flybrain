@@ -1,0 +1,49 @@
+{
+  "_comment": "횡보장 (R -0.02%, 백분위 50 목표). select-periods.js가 만든 설정. fullScaleReturn은 고정 1%.",
+  "name": "periods/p20260818",
+  "prices": "experiments/prices/btcusd_1h.csv",
+  "intervalMin": 60,
+  "rules": {
+    "capital": 100,
+    "orderUsd": 10,
+    "feeRate": 0.006,
+    "reserveRate": 0.02,
+    "maxOrdersPerDay": 24
+  },
+  "fly": {
+    "repeats": 10,
+    "seed": 1100000,
+    "stimulusGroups": [
+      "VIS_R1R6"
+    ],
+    "maxIntensity": 1,
+    "fullScaleReturn": 0.01,
+    "weightScale": 20,
+    "warmupTicks": 20,
+    "windowTicks": 50,
+    "noise": {
+      "rate": 0.005,
+      "amplitude": 1
+    },
+    "readout": {
+      "superClass": "descending",
+      "minSpikes": 10,
+      "margin": 0.2
+    }
+  },
+  "random": {
+    "investors": 10000,
+    "seed": 777,
+    "probs": {
+      "buy": 0.3333333333,
+      "sell": 0.3333333333,
+      "hold": 0.3333333334
+    }
+  },
+  "concurrency": 4,
+  "window": {
+    "start": "2026-08-18T00:00:00.000Z",
+    "hours": 26
+  },
+  "label": "횡보장"
+}

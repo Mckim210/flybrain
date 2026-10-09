@@ -32,19 +32,25 @@ function loadPrices(file) {
 }
 
 /* Every `intervalMin` minutes from the first row: the return over the previous
- * interval, close(now) / close(now - interval) - 1. Rows must be 1 minute apart. */
+ * interval, close(now) / close(now - interval) - 1. Rows must be evenly spaced
+ * (1-minute or 1-hour bars); the bar length is read from the data. */
 function decisionPoints(prices, intervalMin) {
+	var barSec = prices[1].t - prices[0].t;
+	var step = intervalMin * 60 / barSec;
+	if (step < 1 || step !== Math.floor(step)) throw new Error('intervalMin must be a multiple of the bar length (' + barSec / 60 + ' min)');
 	var pts = [];
-	for (var i = intervalMin; i < prices.length; i += intervalMin) {
-		if (prices[i].t - prices[i - intervalMin].t !== intervalMin * 60) {
-			throw new Error('gap in 1-minute data before ' + new Date(prices[i].t * 1000).toISOString());
+	for (var i = step; i < prices.length; i += step) {
+		if (prices[i].t - prices[i - step].t !== intervalMin * 60) {
+			throw new Error('gap in price data before ' + new Date(prices[i].t * 1000).toISOString());
 		}
+		// timestamps are bar start times; the close we trade at is known at bar end
+		var tClose = prices[i].t + barSec;
 		pts.push({
 			index: pts.length,
-			t: prices[i].t,
-			iso: new Date(prices[i].t * 1000).toISOString().slice(0, 16).replace('T', ' '),
+			t: tClose,
+			iso: new Date(tClose * 1000).toISOString().slice(0, 16).replace('T', ' '),
 			price: prices[i].close,
-			ret: prices[i].close / prices[i - intervalMin].close - 1
+			ret: prices[i].close / prices[i - step].close - 1
 		});
 	}
 	return pts;

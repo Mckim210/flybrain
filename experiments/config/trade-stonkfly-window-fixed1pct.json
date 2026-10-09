@@ -1,6 +1,6 @@
 {
-  "_comment": "STONKFLY '$1 이익' 기간(2026-09-10 11:34 ~ 09-11 14:14 UTC, Bitstamp 1분봉)에 1시간마다 한 번 결정. 채택 설정(weightScale 20, VIS_R1R6, 최대 세기 1). 오르면 왼쪽 눈, 내리면 오른쪽 눈. 왼쪽 선택 = 매수, 오른쪽 = 매도, 무반응 = 보유. 주의: fullScaleReturn \"max\"는 기간 전체의 최대 수익률을 써서 미래 정보를 씀(look-ahead) — 재현용으로만 유지, 새 실험은 trade-stonkfly-window-fixed1pct.json 사용.",
-  "name": "trade-stonkfly-window",
+  "_comment": "STONKFLY 기간 재실행: 자극 세기 기준을 고정 1%(fullScaleReturn 0.01)로 바꿔 미래 정보를 쓰지 않게 함. 시드는 이전 실행(trade-stonkfly-window, 'max')과 같아서 두 결과는 세기 기준만 다른 짝지은 비교.",
+  "name": "trade-stonkfly-window-fixed1pct",
   "prices": "experiments/prices/btcusd_stonkfly_window_1min.csv",
   "intervalMin": 60,
   "rules": {
@@ -17,7 +17,7 @@
       "VIS_R1R6"
     ],
     "maxIntensity": 1,
-    "fullScaleReturn": "max",
+    "fullScaleReturn": 0.01,
     "weightScale": 20,
     "warmupTicks": 20,
     "windowTicks": 50,
@@ -40,5 +40,6 @@
       "hold": 0.3333333334
     }
   },
-  "concurrency": 4
+  "concurrency": 4,
+  "label": "STONKFLY 기간"
 }

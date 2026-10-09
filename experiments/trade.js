@@ -24,6 +24,7 @@ var market = require('./lib/market.js');
 var common = require('./lib/trade-common.js');
 var makeRng = require('./lib/headless-sim.js').makeRng;
 var renderChart = require('./lib/trade-chart.js').renderChart;
+var stats = require('./lib/stats.js');
 
 function parseArgs(argv) {
 	var args = {};
@@ -97,9 +98,10 @@ function main() {
 }
 
 function report(cfg, outDir, flyDir) {
-	var prices = market.loadPrices(path.join(__dirname, '..', cfg.prices));
+	var prices = common.loadPrices(cfg);
 	var points = market.decisionPoints(prices, cfg.intervalMin);
 	var finalPrice = prices[prices.length - 1].close;
+	var barSec = prices[1].t - prices[0].t; // timestamps are bar starts; labels use bar close times
 	var fullScale = common.fullScaleReturn(cfg, points);
 	var R = cfg.rules;
 
@@ -130,14 +132,47 @@ function report(cfg, outDir, flyDir) {
 	/* (3) random investors */
 	function randomGroup(probs, seed) {
 		var rng = makeRng(seed);
-		var pnl = new Array(cfg.random.investors);
+		var pnl = new Array(cfg.random.investors), orders = new Array(cfg.random.investors);
 		for (var i = 0; i < pnl.length; i++) {
-			pnl[i] = market.simulate(market.randomActions(points, rng, probs), points, finalPrice, R).pnl;
+			var sim = market.simulate(market.randomActions(points, rng, probs), points, finalPrice, R);
+			pnl[i] = sim.pnl;
+			orders[i] = sim.orders;
 		}
-		return pnl;
+		return { pnl: pnl, orders: orders };
 	}
-	var randPnl = randomGroup(cfg.random.probs, cfg.random.seed);
-	var matchedPnl = randomGroup(flyProbs, cfg.random.seed + 1);
+	var randGroup = randomGroup(cfg.random.probs, cfg.random.seed);
+	var matchedGroup = randomGroup(flyProbs, cfg.random.seed + 1);
+	var randPnl = randGroup.pnl, matchedPnl = matchedGroup.pnl;
+
+	/* Is the fly's P&L explained by how many orders it executed? Compare each fly
+	 * run with the average random investor (fly's action rates) that executed the
+	 * same number of orders in this window. Residual ~ 0 means "yes". When fewer
+	 * than 50 random investors share that count, neighbouring counts are pooled. */
+	function expectedForOrders(k) {
+		for (var w = 0; w <= 26; w++) {
+			var sum = 0, n = 0;
+			for (var i = 0; i < matchedPnl.length; i++) {
+				if (Math.abs(matchedGroup.orders[i] - k) <= w) { sum += matchedPnl[i]; n++; }
+			}
+			if (n >= 50) return { mean: sum / n, n: n, width: w };
+		}
+		return { mean: null, n: 0, width: null };
+	}
+	flyRuns.forEach(function (r) {
+		r.expected = expectedForOrders(r.sim.orders);
+		r.residual = r.sim.pnl - r.expected.mean;
+	});
+	var residualCI = stats.meanCI(flyRuns.map(function (r) { return r.residual; }));
+	function corr(xs, ys) {
+		var n = xs.length, mx = 0, my = 0;
+		for (var i = 0; i < n; i++) { mx += xs[i]; my += ys[i]; }
+		mx /= n; my /= n;
+		var sxy = 0, sxx = 0, syy = 0;
+		for (var i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) * (xs[i] - mx); syy += (ys[i] - my) * (ys[i] - my); }
+		return sxx > 0 && syy > 0 ? sxy / Math.sqrt(sxx * syy) : null;
+	}
+	var flyOrdersPnlCorr = corr(flyRuns.map(function (r) { return r.sim.orders; }), flyPnl);
+	var matchedOrdersPnlCorr = corr(matchedGroup.orders, matchedPnl);
 	var randSorted = randPnl.slice().sort(function (a, b) { return a - b; });
 	var matchedSorted = matchedPnl.slice().sort(function (a, b) { return a - b; });
 
@@ -172,12 +207,12 @@ function report(cfg, outDir, flyDir) {
 	});
 
 	/* ---- files ---- */
-	var fr = ['repeat,final_pnl_usd,final_value_usd,orders,fees_usd,buy_signals,sell_signals,hold_signals,agree_with_rule,opposite_of_rule,percentile_in_random'];
+	var fr = ['repeat,final_pnl_usd,final_value_usd,orders,fees_usd,buy_signals,sell_signals,hold_signals,agree_with_rule,opposite_of_rule,percentile_in_random,expected_pnl_same_orders,residual_vs_same_orders'];
 	flyRuns.forEach(function (r, i) {
 		var c = { buy: 0, sell: 0, hold: 0 };
 		r.actions.forEach(function (a) { c[a]++; });
 		fr.push([r.repeat, r.sim.pnl.toFixed(4), r.sim.finalValue.toFixed(4), r.sim.orders, r.sim.fees.toFixed(4),
-			c.buy, c.sell, c.hold, r.agree, r.opposite, flyPctl[i].toFixed(4)].join(','));
+			c.buy, c.sell, c.hold, r.agree, r.opposite, flyPctl[i].toFixed(4), r.expected.mean.toFixed(4), r.residual.toFixed(4)].join(','));
 	});
 	fs.writeFileSync(path.join(outDir, 'fly_runs.csv'), fr.join('\n') + '\n');
 
@@ -192,17 +227,18 @@ function report(cfg, outDir, flyDir) {
 
 	var summary = {
 		config: cfg,
-		window: { from: new Date(prices[0].t * 1000).toISOString(), to: new Date(prices[prices.length - 1].t * 1000).toISOString(),
+		window: { from: new Date((prices[0].t + barSec) * 1000).toISOString(), to: new Date((prices[prices.length - 1].t + barSec) * 1000).toISOString(),
 			startPrice: prices[0].close, firstDecisionPrice: points[0].price, finalPrice: finalPrice, decisions: points.length,
 			up: points.filter(function (p) { return p.ret > 0; }).length, down: points.filter(function (p) { return p.ret < 0; }).length,
 			fullScaleReturn: fullScale, priceChangeFromFirstDecision: buyHold },
 		rule: { pnl: rule.pnl, orders: rule.orders, fees: rule.fees, percentileInRandom: rulePctl, pnlWithoutFees: ruleNoFee.pnl },
 		fly: { pnl: flyD, percentileInRandomMean: meanPctl, percentileInMatchedRandomMean: meanMatchedPctl,
-			ordersMean: flyOrders, feesMean: flyFees, beatsRule: flyBeatsRule, tiesRule: flyTiesRule,
+			ordersMean: flyOrders, feesMean: flyFees,
+			residualVsSameOrders: residualCI, ordersPnlCorrelation: flyOrdersPnlCorr, beatsRule: flyBeatsRule, tiesRule: flyTiesRule,
 			agreeWithRuleMean: agreeRates.reduce(function (a, b) { return a + b; }, 0) / agreeRates.length,
 			oppositeOfRuleShare: oppositeTotal / (flyRuns.length * points.length), actionRates: flyProbs },
 		random: { pnl: randD, probs: cfg.random.probs },
-		randomMatched: { pnl: matchedD, probs: flyProbs },
+		randomMatched: { pnl: matchedD, probs: flyProbs, ordersPnlCorrelation: matchedOrdersPnlCorr },
 		perDecision: perDecision
 	};
 	fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summary, null, 2) + '\n');
@@ -231,6 +267,10 @@ function report(cfg, outDir, flyDir) {
 		' (초파리와 같은 행동 비율의 무작위 집단 안에서는 ' + pct(meanMatchedPctl) + ')');
 	md.push('- 체결된 주문과 수수료: 규칙 투자자 ' + rule.orders + '건, $' + rule.fees.toFixed(2) + ' (수수료가 없었다면 손익 ' + money(ruleNoFee.pnl) + ')' +
 		' · 초파리 평균 ' + flyOrders.toFixed(1) + '건, $' + flyFees.toFixed(2));
+	md.push('- 거래 횟수로 설명되는가: 초파리 손익 − (같은 주문 건수를 체결한 무작위 투자자 평균) = ' + money(residualCI.mean) +
+		(residualCI.lo !== null ? ' (95% CI ' + money(residualCI.lo) + ' ~ ' + money(residualCI.hi) + ')' : '') +
+		' · 주문 건수와 손익의 상관: 초파리 ' + (flyOrdersPnlCorr === null ? '-' : flyOrdersPnlCorr.toFixed(2)) +
+		', 같은 행동 비율 무작위 ' + (matchedOrdersPnlCorr === null ? '-' : matchedOrdersPnlCorr.toFixed(2)));
 	md.push('- 첫 결정 시점 대비 마지막 가격 변화: ' + pct(buyHold) + ' (' + points[0].price + ' → ' + finalPrice + ' USD)');
 	md.push('');
 	md.push('## 결정 시점별 초파리 행동 (' + cfg.fly.repeats + '회 중 비율)');
