@@ -1,0 +1,11 @@
+{
+  "_comment": "자극 없음 + 배경 잡음. 파리가 원래 한쪽으로 치우치는지 보는 기준 실험.",
+  "name": "baseline-noise",
+  "trials": 100,
+  "seed": 2026,
+  "warmupTicks": 20,
+  "windowTicks": 50,
+  "noise": { "rate": 0.005, "amplitude": 1.0 },
+  "stimulus": null,
+  "readout": { "superClass": "descending", "minSpikes": 10, "margin": 0.2 }
+}

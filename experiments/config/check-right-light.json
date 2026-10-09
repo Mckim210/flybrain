@@ -1,0 +1,11 @@
+{
+  "_comment": "좌/우 자극이 실제로 따로 들어가는지 확인: 오른쪽 광수용체(VIS_R1R6)만 자극. 0.15는 웹 앱의 STIM_INTENSITY와 같은 값.",
+  "name": "check-right-light",
+  "trials": 20,
+  "seed": 5000,
+  "warmupTicks": 20,
+  "windowTicks": 50,
+  "noise": { "rate": 0.005, "amplitude": 1.0 },
+  "stimulus": { "groups": ["VIS_R1R6"], "left": 0, "right": 0.15, "balance": true },
+  "readout": { "superClass": "descending", "minSpikes": 10, "margin": 0.2 }
+}

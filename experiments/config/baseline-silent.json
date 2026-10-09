@@ -1,0 +1,11 @@
+{
+  "_comment": "자극도 잡음도 없음. 원래 시뮬레이터는 난수가 없어서 모든 시행이 똑같이 나와야 한다(확인용).",
+  "name": "baseline-silent",
+  "trials": 100,
+  "seed": 2026,
+  "warmupTicks": 20,
+  "windowTicks": 50,
+  "noise": { "rate": 0, "amplitude": 0 },
+  "stimulus": null,
+  "readout": { "superClass": "descending", "minSpikes": 10, "margin": 0.2 }
+}
