@@ -17,21 +17,33 @@
   FlyWire 데이터는 CC-BY-NC — 비상업 연구 용도만.
 - 감각 입력: `js/connectome.js`의 `BRAIN.stimulate` (touch, foodNearby, dangerOdor, wind + windDirection, lightLevel, temperature, nociception).
   방향성이 있는 입력은 현재 `windDirection` 정도. 좌/우를 구분하는 자극이 필요하면 새로 만들어야 한다.
-- 출력 그룹: `BRAIN.neuronRegions.motor` — DN_WALK, DN_TURN, DN_BACKUP, DN_STARTLE, MN_LEG_L1~R3, MN_WING_L/R 등 좌/우 운동뉴런 그룹이 있음.
-  `brain-worker-bridge.js`에서 `CX_HDELTA` 등을 읽어 회전으로 바꿈.
+- 출력 그룹: `DN_WALK`, `DN_TURN`, `MN_LEG_L1~R3`, `MN_WING_L/R` 등은 **실제 뉴런이 0개**다(`data/neuron_meta.json`).
+  FlyWire FAFB는 뇌만 포함하므로 웹 앱은 이 그룹을 `brain-worker-bridge.js`의 `synthesizeMotorOutputs()`에서 좌우 대칭으로 만들어 낸다.
+  실험에서는 뇌의 실제 출력인 **하행 뉴런(super_class = descending, 왼쪽 647·오른쪽 650개)**을 좌/우로 나눠 읽는다.
 - **주의**: `js/main.js`의 파리는 먹이 쪽으로 갈 때 `nearestFood()`로 가장 가까운 먹이를 **코드가 고정적으로 고른다**.
   즉 화면 속 "먹이 선택"은 뇌가 내린 결정이 아니다. 실험에서는 이 경로를 쓰지 말고, 뇌 출력(좌/우 운동뉴런 발화율 차이)을 직접 읽을 것.
 - Neuron Map 오버레이(`js/neuron-map.js`, `data/neuron_positions.bin`): 실제 FlyWire 좌표에 뉴런별 발화를 실시간 표시. 상단 "Neuron Map" 버튼.
 - 실행: 로컬 HTTP 서버 필요(`python3 -m http.server` 후 `index.html`). `file://`로 열면 fetch/Worker가 막힌다.
 - 테스트: `tests/run-node.js`, `tests/run.html`.
 
-## 실험 계획 (다음 작업)
-1. 브라우저 없이 Node에서 `sim-worker.js`의 시뮬레이션을 돌릴 수 있는 헤드리스 러너 만들기(`experiments/` 폴더).
-2. 좌/우 감각 자극 API 추가: 예) 자산 A 수익률 → 왼쪽 감각뉴런 그룹 자극 세기, 자산 B → 오른쪽.
-3. 출력 판독: 일정 시간창 동안 왼쪽 vs 오른쪽 운동/하행 뉴런 발화 수 → "A 선택 / B 선택 / 무반응".
-4. 같은 조건을 수백 번 반복(난수 시드 고정·기록) → 선택 비율, 이항검정, 무작위 선택과 비교.
-5. 결과는 CSV/JSON + 차트(HTML)로 저장하고, 어떤 뉴런 그룹이 많이 발화했는지 요약.
-6. 민찬님이 조건(자극 세기, 가격 데이터, 반복 횟수)을 바꿔 다시 돌릴 수 있게 설정 파일/명령어로 정리.
+## 실험 계획
+완료(브랜치 claude/compassionate-babbage-2f932s, `experiments/README.md` 참고):
+1. 헤드리스 러너 `experiments/run-trials.js` (같은 시드 → 같은 결과, 재현 확인함)
+2. 좌/우 감각 자극(`stimulus.groups/left/right/balance`)
+3. 하행 뉴런 좌/우 발화로 "왼쪽/오른쪽/무반응" 판정, 이항검정
+
+지금까지 결과:
+- 잡음 없음 → 하행 뉴런 발화 0 (모델에 난수가 없어 잡음이 있어야 활동이 생김)
+- 잡음만 100회 → 왼쪽 8, 오른쪽 4, 무반응 88 (p≈0.39, 편향 지수 d 평균≈0) → 타고난 좌우 치우침 없음
+- 왼쪽 눈(R1–R6)만 자극 0.15 vs 오른쪽 눈만 → 광수용체는 크게 발화하지만 하행 뉴런 출력은 거의 같음
+  → **현재 설정에서는 감각 자극이 출력까지 전달되지 않는다.** (시냅스 가중치 최대 0.15로 정규화, 평균 약 0.0008, 문턱 1.0)
+
+다음 단계:
+4. 용량-반응 실험: 자극 세기(예: 0.15, 0.5, 1, 2, 5)·자극 그룹(VIS_R1R6, OLF_ORN_FOOD, MECH_JO 등)을 바꿔
+   좌/우 하행 뉴런 차이가 생기는 조건을 찾는다. 필요하면 `params`(threshold, leakRate) 또는 가중치 배율 플래그를 추가(웹 앱 기본값은 유지).
+5. 신호가 전달되는 조건을 찾은 뒤에만 가격 → 자극 매핑(자산 A 수익률 → 왼쪽, 자산 B → 오른쪽)을 붙인다.
+6. 같은 조건을 수백 번 반복 → 선택 비율과 무작위(50:50)를 비교, 결과 CSV/JSON + 차트(HTML).
+7. 민찬님이 조건을 바꿔 다시 돌릴 수 있게 설정 파일/명령어로 정리.
 
 ## 이미 알려진 STONKFLY 사실 (nftechie/stonkfly commit 78ef3e0 기준)
 - 가격 → RGB 차트 → R1–R6/R8 광수용체 입력. DNp20 오른쪽−왼쪽 ≥ 2 Hz(+DNpe017 스파이크) = BUY.
