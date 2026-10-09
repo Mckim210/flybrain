@@ -152,6 +152,7 @@
 			BRAIN.workerGroupIdToName = groupIdToName;
 			BRAIN.workerGroupSizes = groupSizes;
 			BRAIN.workerEdgeCount = e.data.edgeCount;
+			BRAIN.workerOrder = e.data.order || null;
 
 			// Reset postSynaptic to avoid stale legacy values
 			for (var ps in BRAIN.postSynaptic) {

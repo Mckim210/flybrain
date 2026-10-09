@@ -58,6 +58,7 @@ var cumulativeFiredCount = 0;
 /* neuropil-gated simulation structures (built by buildGroupStructures) */
 var numGroups = 0;
 var groupOffset = null;          // Uint32Array[numGroups+1] prefix sum
+var sortedOrder = null;          // Uint32Array[N] sorted_pos -> original index (neuron-map.js)
 var groupActive = null;          // Uint8Array[numGroups]
 var groupCooldown = null;        // Uint8Array[numGroups]
 var groupRecvInput = null;       // Uint8Array[numGroups] per-tick scratch
@@ -182,6 +183,8 @@ function buildGroupStructures() {
 		var g = groupId[i];
 		sortedByGroup[writePos[g]++] = i;
 	}
+
+	sortedOrder = sortedByGroup;
 
 	/* reverse mapping: originalToSorted[original_index] = sorted_pos */
 	var originalToSorted = new Uint32Array(N);
@@ -402,7 +405,7 @@ self.onmessage = function (e) {
 			function postReady() {
 				buildGroupStructures();
 				self.postMessage({type: 'ready', neuronCount: N, edgeCount: edgeCount,
-					groupId: groupId, regionType: regionType});
+					groupId: groupId, regionType: regionType, order: sortedOrder});
 			}
 
 			var header = new Uint8Array(buffer, 0, 2);
