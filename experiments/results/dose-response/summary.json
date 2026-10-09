@@ -1,0 +1,424 @@
+{
+  "sweep": {
+    "_comment": "용량-반응: 3개 감각 그룹 x 5개 세기 x 왼쪽만/오른쪽만. 모든 조건이 같은 시드를 써서 시행끼리 짝지어 비교한다. 웹 앱 기본 모델(가중치 배율 1, 문턱 1.0).",
+    "name": "dose-response",
+    "trials": 20,
+    "seed": 3000,
+    "groups": [
+      "VIS_R1R6",
+      "OLF_ORN_FOOD",
+      "MECH_JO"
+    ],
+    "intensities": [
+      0.15,
+      0.5,
+      1,
+      2,
+      5
+    ],
+    "weightScales": [
+      1
+    ],
+    "thresholds": [
+      1
+    ],
+    "includeBaseline": true,
+    "base": {
+      "warmupTicks": 20,
+      "windowTicks": 50,
+      "noise": {
+        "rate": 0.005,
+        "amplitude": 1
+      },
+      "readout": {
+        "superClass": "descending",
+        "minSpikes": 10,
+        "margin": 0.2
+      }
+    }
+  },
+  "baselines": {
+    "1|1": {
+      "desc": 56.75,
+      "total": 5956.6,
+      "d": -0.006210000000000003
+    }
+  },
+  "rows": [
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "VIS_R1R6",
+      "intensity": 0.15,
+      "d_left_stim": 0.0008549999999999988,
+      "d_right_stim": -0.010035,
+      "delta_d": 0.01089,
+      "delta_lo": 0.003955998767656077,
+      "delta_hi": 0.017824001232343924,
+      "signal": true,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "desc_spikes_per_trial": 57.15,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 5490
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "VIS_R1R6",
+      "intensity": 0.5,
+      "d_left_stim": 0.01021,
+      "d_right_stim": -0.018415,
+      "delta_d": 0.028625000000000005,
+      "delta_lo": 0.01768992880611631,
+      "delta_hi": 0.0395600711938837,
+      "signal": true,
+      "choices_left_stim": {
+        "left": 3,
+        "right": 1,
+        "none": 16
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "desc_spikes_per_trial": 57.9,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 5490
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "VIS_R1R6",
+      "intensity": 1,
+      "d_left_stim": 0.005329999999999999,
+      "d_right_stim": -0.020170000000000007,
+      "delta_d": 0.025500000000000002,
+      "delta_lo": 0.014733934432640589,
+      "delta_hi": 0.036266065567359416,
+      "signal": true,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 2,
+        "none": 16
+      },
+      "desc_spikes_per_trial": 58.7,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 5490
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "VIS_R1R6",
+      "intensity": 2,
+      "d_left_stim": 0.005329999999999999,
+      "d_right_stim": -0.01913000000000001,
+      "delta_d": 0.024460000000000003,
+      "delta_lo": 0.013374070871195118,
+      "delta_hi": 0.03554592912880489,
+      "signal": true,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 2,
+        "none": 16
+      },
+      "desc_spikes_per_trial": 58.725,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 5490
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "VIS_R1R6",
+      "intensity": 5,
+      "d_left_stim": 0.005329999999999999,
+      "d_right_stim": -0.01913000000000001,
+      "delta_d": 0.024460000000000003,
+      "delta_lo": 0.013374070871195118,
+      "delta_hi": 0.03554592912880489,
+      "signal": true,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 2,
+        "none": 16
+      },
+      "desc_spikes_per_trial": 58.725,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 5490
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "OLF_ORN_FOOD",
+      "intensity": 0.15,
+      "d_left_stim": -0.006210000000000003,
+      "d_right_stim": -0.006210000000000003,
+      "delta_d": 0,
+      "delta_lo": 0,
+      "delta_hi": 0,
+      "signal": false,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "desc_spikes_per_trial": 56.75,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 912
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "OLF_ORN_FOOD",
+      "intensity": 0.5,
+      "d_left_stim": -0.006210000000000003,
+      "d_right_stim": -0.006210000000000003,
+      "delta_d": 0,
+      "delta_lo": 0,
+      "delta_hi": 0,
+      "signal": false,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "desc_spikes_per_trial": 56.75,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 912
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "OLF_ORN_FOOD",
+      "intensity": 1,
+      "d_left_stim": -0.006210000000000003,
+      "d_right_stim": -0.006210000000000003,
+      "delta_d": 0,
+      "delta_lo": 0,
+      "delta_hi": 0,
+      "signal": false,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "desc_spikes_per_trial": 56.75,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 912
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "OLF_ORN_FOOD",
+      "intensity": 2,
+      "d_left_stim": -0.006210000000000003,
+      "d_right_stim": -0.006210000000000003,
+      "delta_d": 0,
+      "delta_lo": 0,
+      "delta_hi": 0,
+      "signal": false,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "desc_spikes_per_trial": 56.75,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 912
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "OLF_ORN_FOOD",
+      "intensity": 5,
+      "d_left_stim": -0.006210000000000003,
+      "d_right_stim": -0.006210000000000003,
+      "delta_d": 0,
+      "delta_lo": 0,
+      "delta_hi": 0,
+      "signal": false,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "desc_spikes_per_trial": 56.75,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 912
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "MECH_JO",
+      "intensity": 0.15,
+      "d_left_stim": -0.006210000000000003,
+      "d_right_stim": -0.009145000000000004,
+      "delta_d": 0.002935000000000001,
+      "delta_lo": -0.0004474067970648382,
+      "delta_hi": 0.006317406797064841,
+      "signal": false,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "desc_spikes_per_trial": 56.825,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 412
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "MECH_JO",
+      "intensity": 0.5,
+      "d_left_stim": -0.004504999999999997,
+      "d_right_stim": -0.01794499999999999,
+      "delta_d": 0.013440000000000002,
+      "delta_lo": 0.006194521141153563,
+      "delta_hi": 0.020685478858846442,
+      "signal": true,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "desc_spikes_per_trial": 57.125,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 412
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "MECH_JO",
+      "intensity": 1,
+      "d_left_stim": 0.002334999999999998,
+      "d_right_stim": -0.023085,
+      "delta_d": 0.025420000000000005,
+      "delta_lo": 0.01691793080251467,
+      "delta_hi": 0.03392206919748534,
+      "signal": true,
+      "choices_left_stim": {
+        "left": 3,
+        "right": 1,
+        "none": 16
+      },
+      "choices_right_stim": {
+        "left": 1,
+        "right": 1,
+        "none": 18
+      },
+      "desc_spikes_per_trial": 57.5,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 412
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "MECH_JO",
+      "intensity": 2,
+      "d_left_stim": 0.0023999999999999994,
+      "d_right_stim": -0.022354999999999993,
+      "delta_d": 0.024755,
+      "delta_lo": 0.015835562563709424,
+      "delta_hi": 0.033674437436290575,
+      "signal": true,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 1,
+        "right": 1,
+        "none": 18
+      },
+      "desc_spikes_per_trial": 57.475,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 412
+    },
+    {
+      "weightScale": 1,
+      "threshold": 1,
+      "group": "MECH_JO",
+      "intensity": 5,
+      "d_left_stim": 0.0023999999999999994,
+      "d_right_stim": -0.022354999999999993,
+      "delta_d": 0.024755,
+      "delta_lo": 0.015835562563709424,
+      "delta_hi": 0.033674437436290575,
+      "signal": true,
+      "choices_left_stim": {
+        "left": 2,
+        "right": 1,
+        "none": 17
+      },
+      "choices_right_stim": {
+        "left": 1,
+        "right": 1,
+        "none": 18
+      },
+      "desc_spikes_per_trial": 57.475,
+      "baseline_desc_spikes_per_trial": 56.75,
+      "stim_neurons_per_side": 412
+    }
+  ]
+}
