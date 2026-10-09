@@ -1,0 +1,2 @@
+weight_scale,threshold,group,intensity,stim_neurons_per_side,d_left_stim,d_right_stim,delta_d,delta_lo95,delta_hi95,signal,left_stim_L,left_stim_R,left_stim_none,right_stim_L,right_stim_R,right_stim_none,desc_spikes_per_trial,baseline_desc_spikes_per_trial
+20,1,VIS_R1R6,1,5490,0.1877,-0.2272,0.4149,0.4038,0.4260,true,44,0,56,0,66,34,142.81,76.99

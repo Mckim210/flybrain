@@ -1,0 +1,108 @@
+{
+  "config": {
+    "name": "dose-response-weights/runs/VIS_R1R6_left_i0p5_w20_t1",
+    "trials": 20,
+    "seed": 3000,
+    "warmupTicks": 20,
+    "windowTicks": 50,
+    "noise": {
+      "rate": 0.005,
+      "amplitude": 1
+    },
+    "stimulus": {
+      "groups": [
+        "VIS_R1R6"
+      ],
+      "left": 0.5,
+      "right": 0,
+      "balance": true
+    },
+    "readout": {
+      "superClass": "descending",
+      "minSpikes": 10,
+      "margin": 0.2
+    },
+    "params": {
+      "threshold": 1
+    },
+    "weightScale": 20
+  },
+  "trials": 20,
+  "counts": {
+    "left": 9,
+    "right": 0,
+    "none": 11,
+    "none_too_few_spikes": 0,
+    "none_too_close": 11
+  },
+  "decided": 9,
+  "left_share_of_decided": 1,
+  "left_share_95ci": [
+    0.7008549515804559,
+    1
+  ],
+  "binomial_p_two_sided": 0.00390625,
+  "readout_spikes_total": {
+    "left": 1288,
+    "right": 894
+  },
+  "lateralization_d": {
+    "n": 20,
+    "mean": 0.17952133749586732,
+    "lo": 0.14117350408658508,
+    "hi": 0.21786917090514957
+  },
+  "top_groups_by_spikes": [
+    {
+      "group": "VIS_R1R6",
+      "left": 1098697,
+      "right": 4610
+    },
+    {
+      "group": "VIS_ME",
+      "left": 41339,
+      "right": 35442
+    },
+    {
+      "group": "GENERIC_CENTRAL",
+      "left": 10745,
+      "right": 10791
+    },
+    {
+      "group": "MB_KC",
+      "left": 2189,
+      "right": 2193
+    },
+    {
+      "group": "GNG_DESC",
+      "left": 2215,
+      "right": 1944
+    },
+    {
+      "group": "VIS_LO",
+      "left": 837,
+      "right": 909
+    },
+    {
+      "group": "VIS_LPTC",
+      "left": 813,
+      "right": 886
+    },
+    {
+      "group": "MECH_BRISTLE",
+      "left": 853,
+      "right": 797
+    },
+    {
+      "group": "OLF_ORN_FOOD",
+      "left": 776,
+      "right": 788
+    },
+    {
+      "group": "CX_PFN",
+      "left": 600,
+      "right": 560
+    }
+  ],
+  "seconds": 138.869
+}
