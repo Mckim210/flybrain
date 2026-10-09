@@ -1,0 +1,17 @@
+{
+  "_comment": "확인 실험: 가중치 스윕에서 고른 조건(weightScale 20, VIS_R1R6, 세기 1)을 새 시드로 100회씩 다시 측정. 27개 조건 중 가장 좋은 것을 골랐기 때문에 같은 시드로는 효과가 과대평가될 수 있다.",
+  "name": "confirm-w20-vis",
+  "trials": 100,
+  "seed": 9000,
+  "groups": ["VIS_R1R6"],
+  "intensities": [1],
+  "weightScales": [20],
+  "thresholds": [1.0],
+  "includeBaseline": true,
+  "base": {
+    "warmupTicks": 20,
+    "windowTicks": 50,
+    "noise": { "rate": 0.005, "amplitude": 1.0 },
+    "readout": { "superClass": "descending", "minSpikes": 10, "margin": 0.2 }
+  }
+}
