@@ -47,6 +47,25 @@ node experiments/sweep.js --config experiments/config/dose-response.json --only-
   자극 없을 때 뇌 전체 발화는 틱당 124회로 기본 모델(119)과 비슷함.
 - `weightScale` 40은 자극 없이도 뇌 전체 발화가 약 1.5배, 하행 발화가 약 2.4배로 늘어 추천하지 않음.
 - 세기 1 이상은 감각뉴런이 이미 최대 속도로 발화해서 결과가 같음(포화). 가격 → 자극 세기 변환은 0.15~1 범위에서 하는 것이 좋음.
+- STONKFLY 기간 거래 실험(`results/trade-stonkfly-window`): 초파리 30회 손익 평균 −$0.00(범위 −$0.50 ~ +$0.94),
+  규칙 투자자 −$1.10(주문 22건·수수료 $1.32, 수수료가 없었다면 +$0.22), 무작위 1만 명 평균 −$0.15.
+  초파리는 74%를 보유했고, 움직일 때는 거의 규칙과 같은 방향(정반대 1.9%). 손익은 같은 행동 비율의 무작위 집단과 구별되지 않음(백분위 평균 47%).
+
+## 초파리 투자자 vs 규칙 투자자 vs 무작위 투자자
+
+```bash
+node experiments/trade.js --config experiments/config/trade-stonkfly-window.json
+# 초파리 실행은 그대로 두고 표·차트만 다시 만들기
+node experiments/trade.js --config experiments/config/trade-stonkfly-window.json --only-report
+```
+
+- 가격: `experiments/prices/btcusd_stonkfly_window_1min.csv` (출처·라이선스 `prices/DATA_SOURCE.md`). 1시간마다 결정(26회).
+- 자극: 직전 1시간 수익률이 오르면 왼쪽 눈, 내리면 오른쪽 눈(`VIS_R1R6`). 세기 = 1 × |수익률| / (이 기간 최대 |수익률|).
+  판정: 왼쪽 = 매수, 오른쪽 = 매도, 무반응 = 보유. 결정마다 뇌를 초기화(기억 없음). 시드만 바꿔 30회 반복.
+- 포트폴리오 규칙(`lib/market.js`): 자본 $100, 주문당 최대 $10, 수수료 0.6%(매수는 현금에서, 매도는 대금에서),
+  예비금 = 시작 자본의 2%, 하루(UTC) 최대 24건, 공매도 없음(가진 BTC가 없으면 매도 신호는 보유), 결정 분의 종가로 체결,
+  최종 가치 = 현금 + BTC × 마지막 종가. STONKFLY 코드의 세부(반올림 등)와는 다를 수 있다.
+- 결과: `results/trade-stonkfly-window/` — `table.md`, `chart.html`(브라우저로 열기), `fly_runs.csv`, `decisions.csv`, `random_pnl.csv`, `summary.json`.
 
 ## 한 시행의 구조
 

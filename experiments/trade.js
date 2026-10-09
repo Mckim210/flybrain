@@ -145,6 +145,11 @@ function report(cfg, outDir, flyDir) {
 	var flyPctl = flyPnl.map(function (x) { return percentileOf(randSorted, x); });
 	var meanPctl = flyPctl.reduce(function (a, b) { return a + b; }, 0) / flyPctl.length;
 	var rulePctl = percentileOf(randSorted, rule.pnl);
+	var matchedPctl = flyPnl.map(function (x) { return percentileOf(matchedSorted, x); });
+	var meanMatchedPctl = matchedPctl.reduce(function (a, b) { return a + b; }, 0) / matchedPctl.length;
+	var ruleNoFee = market.simulate(ruleAct, points, finalPrice, Object.assign({}, R, { feeRate: 0 }));
+	var flyOrders = flyRuns.reduce(function (a, r) { return a + r.sim.orders; }, 0) / flyRuns.length;
+	var flyFees = flyRuns.reduce(function (a, r) { return a + r.sim.fees; }, 0) / flyRuns.length;
 	var flyBeatsRule = flyPnl.filter(function (x) { return x > rule.pnl + 1e-9; }).length;
 	var flyTiesRule = flyPnl.filter(function (x) { return Math.abs(x - rule.pnl) <= 1e-9; }).length;
 	var agreeRates = flyRuns.map(function (r) { return r.agree / points.length; });
@@ -191,8 +196,9 @@ function report(cfg, outDir, flyDir) {
 			startPrice: prices[0].close, firstDecisionPrice: points[0].price, finalPrice: finalPrice, decisions: points.length,
 			up: points.filter(function (p) { return p.ret > 0; }).length, down: points.filter(function (p) { return p.ret < 0; }).length,
 			fullScaleReturn: fullScale, priceChangeFromFirstDecision: buyHold },
-		rule: { pnl: rule.pnl, orders: rule.orders, fees: rule.fees, percentileInRandom: rulePctl },
-		fly: { pnl: flyD, percentileInRandomMean: meanPctl, beatsRule: flyBeatsRule, tiesRule: flyTiesRule,
+		rule: { pnl: rule.pnl, orders: rule.orders, fees: rule.fees, percentileInRandom: rulePctl, pnlWithoutFees: ruleNoFee.pnl },
+		fly: { pnl: flyD, percentileInRandomMean: meanPctl, percentileInMatchedRandomMean: meanMatchedPctl,
+			ordersMean: flyOrders, feesMean: flyFees, beatsRule: flyBeatsRule, tiesRule: flyTiesRule,
 			agreeWithRuleMean: agreeRates.reduce(function (a, b) { return a + b; }, 0) / agreeRates.length,
 			oppositeOfRuleShare: oppositeTotal / (flyRuns.length * points.length), actionRates: flyProbs },
 		random: { pnl: randD, probs: cfg.random.probs },
@@ -221,7 +227,10 @@ function report(cfg, outDir, flyDir) {
 	md.push('- 초파리가 규칙 투자자와 같은 행동을 한 비율(신호 기준): 평균 ' + pct(summary.fly.agreeWithRuleMean) +
 		', 정반대 행동(규칙은 매수인데 매도 등): ' + pct(summary.fly.oppositeOfRuleShare));
 	md.push('- 초파리 ' + cfg.fly.repeats + '회 중 규칙 투자자보다 손익이 높은 회차: ' + flyBeatsRule + ', 같은 회차: ' + flyTiesRule);
-	md.push('- 무작위 1만 명 안에서의 백분위: 규칙 투자자 ' + pct(rulePctl) + ', 초파리 평균 ' + pct(meanPctl));
+	md.push('- 무작위 1만 명 안에서의 백분위: 규칙 투자자 ' + pct(rulePctl) + ', 초파리 평균 ' + pct(meanPctl) +
+		' (초파리와 같은 행동 비율의 무작위 집단 안에서는 ' + pct(meanMatchedPctl) + ')');
+	md.push('- 체결된 주문과 수수료: 규칙 투자자 ' + rule.orders + '건, $' + rule.fees.toFixed(2) + ' (수수료가 없었다면 손익 ' + money(ruleNoFee.pnl) + ')' +
+		' · 초파리 평균 ' + flyOrders.toFixed(1) + '건, $' + flyFees.toFixed(2));
 	md.push('- 첫 결정 시점 대비 마지막 가격 변화: ' + pct(buyHold) + ' (' + points[0].price + ' → ' + finalPrice + ' USD)');
 	md.push('');
 	md.push('## 결정 시점별 초파리 행동 (' + cfg.fly.repeats + '회 중 비율)');
