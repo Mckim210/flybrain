@@ -1,0 +1,28 @@
+{
+  "warmupTicks": 20,
+  "windowTicks": 50,
+  "noise": {
+    "rate": 0.005,
+    "amplitude": 1
+  },
+  "readout": {
+    "superClass": "descending",
+    "minSpikes": 10,
+    "margin": 0.2
+  },
+  "name": "confirm-w20-vis/runs/VIS_R1R6_right_i1_w20_t1",
+  "trials": 100,
+  "seed": 9000,
+  "stimulus": {
+    "groups": [
+      "VIS_R1R6"
+    ],
+    "left": 0,
+    "right": 1,
+    "balance": true
+  },
+  "weightScale": 20,
+  "params": {
+    "threshold": 1
+  }
+}

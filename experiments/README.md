@@ -37,6 +37,17 @@ node experiments/sweep.js --config experiments/config/dose-response.json --only-
 - 결과: `experiments/results/<name>/table.md`, `table.csv`, `summary.json`, 조건별 원자료는 `runs/` 아래.
 - 이미 끝난 조건(`summary.json`이 있는 조건)은 건너뜁니다. 조건을 바꿔 다시 돌릴 때는 `--name`을 바꾸세요.
 
+## 지금까지의 결론 (2026-10-09)
+
+- 웹 앱 기본 모델(`weightScale` 1)에서는 좌/우 감각 자극이 하행 뉴런까지 거의 전달되지 않음
+  (`results/dose-response`: Δd ≈ +0.025, 선택은 거의 안 바뀜).
+- **추천 실험 조건: `weightScale` 20, 자극 그룹 `VIS_R1R6`, 세기 1** (`config/confirm-w20-vis.json`).
+  새 시드로 100회씩 확인한 결과(`results/confirm-w20-vis`):
+  왼쪽만 자극 → 왼쪽 44 / 오른쪽 0 / 무반응 56, 오른쪽만 자극 → 0 / 66 / 34, 자극 없음 → 2 / 4 / 94 (이항검정 p = 0.69).
+  자극 없을 때 뇌 전체 발화는 틱당 124회로 기본 모델(119)과 비슷함.
+- `weightScale` 40은 자극 없이도 뇌 전체 발화가 약 1.5배, 하행 발화가 약 2.4배로 늘어 추천하지 않음.
+- 세기 1 이상은 감각뉴런이 이미 최대 속도로 발화해서 결과가 같음(포화). 가격 → 자극 세기 변환은 0.15~1 범위에서 하는 것이 좋음.
+
 ## 한 시행의 구조
 
 1. `reset` — 모든 뉴런 전압 0
