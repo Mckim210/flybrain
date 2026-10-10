@@ -87,7 +87,8 @@ function main() {
 		var periodsAhead = sub.filter(function (r) { return r.flyMean > r.rule; }).length;
 		md.push('');
 		md.push('- 수수료 ' + (100 * fee).toFixed(1) + '%: 초파리 실행 ' + n + '회 중 규칙 투자자보다 나은 회차 ' + beats + ' (' + (100 * beats / n).toFixed(0) + '%), ' +
-			'초파리 평균이 규칙보다 높은 기간 ' + periodsAhead + '/' + sub.length);
+			'초파리 평균이 규칙보다 높은 기간 ' + periodsAhead + '/' + sub.length + ', 기간 평균 차이(초파리 − 규칙) ' +
+			money(mean(sub.map(function (r) { return r.flyMean - r.rule; }))));
 	});
 	var out = path.join(__dirname, 'results', 'fee-counterfactual');
 	fs.mkdirSync(out, { recursive: true });

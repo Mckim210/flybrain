@@ -1,0 +1,49 @@
+{
+  "_comment": "강건성: weightScale 10 (채택 설정 20 대신). 나머지·시드는 p20260731.json와 같아서 반복 0~9는 20배 실험과 같은 잡음.",
+  "name": "robust-w10/p20260731",
+  "prices": "experiments/prices/btcusd_1h.csv",
+  "intervalMin": 60,
+  "rules": {
+    "capital": 100,
+    "orderUsd": 10,
+    "feeRate": 0.006,
+    "reserveRate": 0.02,
+    "maxOrdersPerDay": 24
+  },
+  "fly": {
+    "repeats": 10,
+    "seed": 700000,
+    "stimulusGroups": [
+      "VIS_R1R6"
+    ],
+    "maxIntensity": 1,
+    "fullScaleReturn": 0.01,
+    "weightScale": 10,
+    "warmupTicks": 20,
+    "windowTicks": 50,
+    "noise": {
+      "rate": 0.005,
+      "amplitude": 1
+    },
+    "readout": {
+      "superClass": "descending",
+      "minSpikes": 10,
+      "margin": 0.2
+    }
+  },
+  "random": {
+    "investors": 10000,
+    "seed": 777,
+    "probs": {
+      "buy": 0.3333333333,
+      "sell": 0.3333333333,
+      "hold": 0.3333333334
+    }
+  },
+  "concurrency": 4,
+  "window": {
+    "start": "2026-07-31T00:00:00.000Z",
+    "hours": 26
+  },
+  "label": "하락장"
+}

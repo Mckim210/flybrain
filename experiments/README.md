@@ -66,6 +66,10 @@ node experiments/sweep.js --config experiments/config/dose-response.json --only-
   0 근처(−$0.32 ~ +$0.16)에 머묾 — 78~88%를 보유해서 거래가 적기 때문. 같은 주문 수 무작위 대비 잔차 +$0.01 [−$0.03, +$0.05].
 - 그림: `results/figures/summary.html`(.png) 6개 기간 요약, `results/figures/neurons-buy.html`(.png) 매수 결정 1회의 뉴런 지도.
 
+- 강건성(가중치 ×10, 같은 시드 6기간 × 10회, `results/robust-w10/comparison.md`): 보유 비율이 오르지만(82% → 87%)
+  초파리 > 규칙 60/60, 잔차 −$0.01 [−$0.05, +$0.03] → 결론 같음.
+- 소논문용 숫자·출처·재현 명령어 모음: `PAPER.md`.
+
 ## 수수료·매핑·그림 명령어
 
 ```bash
