@@ -1,0 +1,142 @@
+# 소논문용 핵심 숫자와 재현 방법
+
+"초파리 트레이더의 1달러 — 실력인가 운인가"에 들어갈 숫자를 한곳에 모은 문서입니다.
+모든 숫자는 아래 적은 결과 파일에서 그대로 옮겼고, 같은 명령어를 다시 실행하면 같은 숫자가 나옵니다
+(시드 고정, 같은 시드 → 같은 결과를 재생으로 확인함).
+
+## 공통 사항
+
+- **모델**: FlyWire FAFB v783 커넥톰(뉴런 139,255개, 연결 2,698,236개) 위의 LIF 시뮬레이터 `js/sim-worker.js`를
+  수정 없이 Node에서 실행(`experiments/lib/headless-sim.js`). 1틱은 생물학적 시간 단위가 아님.
+- **판독**: 하행 뉴런(FlyWire `super_class = descending`, 왼쪽 647·오른쪽 650개)의 좌/우 발화율.
+  편향 지수 d = (왼쪽 발화율 − 오른쪽 발화율) / (합). 좌우 발화 합 10 미만 또는 |d| < 0.2이면 "무반응".
+- **잡음**: 원래 모델엔 난수가 없음. 매 틱 각 뉴런이 0.5% 확률로 +1.0 입력(시드 고정) — 시행마다 결과가 달라지는 유일한 원인.
+- **거래 규칙**(STONKFLY 기준): 자본 $100, 주문당 최대 $10, 수수료 0.6%, 예비금 2%, 하루 최대 24건, 공매도 없음, 1시간마다 결정.
+  초파리: 오르면 왼쪽 눈(R1–R6) 자극, 세기 = |직전 1시간 수익률| / 1%(최대 1), 왼쪽 선택 = 매수, 오른쪽 = 매도, 무반응 = 보유.
+- **데이터**: 커넥톰 FlyWire(CC-BY-NC, 비상업 연구용), 가격 Bitstamp BTC/USD(ff137/bitstamp-btcusd-minute-data, CC BY-SA 4.0,
+  `experiments/prices/DATA_SOURCE.md`). STONKFLY는 Coinbase BTC-USDC를 썼으므로 가격은 근사치.
+- **다시 실행할 때**: 스크립트는 이미 있는 결과(조건 폴더, `fly/rep_*.json`)를 건너뛰므로, 처음부터 다시 만들려면 해당 결과 폴더를
+  지우거나 `--name`으로 새 이름을 주세요. 표만 다시 만들 때는 `--only-report` / `--only-table`.
+  실행 시간은 4코어 기준(뇌 1시행 ≈ 6~9초).
+
+## 1. 기준 실험 — 자극이 없을 때 치우침이 있는가
+
+| 조건 | 시행 | 왼쪽 / 오른쪽 / 무반응 | 이항검정 p | 평균 d [95% CI] |
+|---|---:|---|---:|---|
+| 잡음 없음 | 100 | 0 / 0 / 100 (발화 0) | — | — |
+| 잡음만 | 100 | 8 / 4 / 88 | 0.39 | −0.002 [−0.028, +0.025] |
+
+- 결과 파일: `results/baseline-silent/summary.json`, `results/baseline-noise/summary.json`
+- 명령어: `node experiments/run-trials.js --config experiments/config/baseline-noise.json` (잡음 없음: `baseline-silent.json`), 각 약 11분
+- 한계: 잡음 모형(확률·세기)을 정한 근거가 생물학적 측정이 아님.
+
+## 2. 용량-반응 — 감각 자극이 출력까지 가는가
+
+| 모델 | 자극 (왼쪽만 vs 오른쪽만, 세기 1) | 짝지은 Δd [95% CI] | 선택 왼/오/무 (왼쪽 자극 → 오른쪽 자극) |
+|---|---|---|---|
+| 기본 (가중치 ×1) | 광수용체 VIS_R1R6 | +0.026 [+0.015, +0.036] | 2/1/17 → 2/2/16 |
+| 기본 (가중치 ×1) | 먹이 냄새 OLF_ORN_FOOD | 0.000 | 2/1/17 → 2/1/17 |
+| 기본 (가중치 ×1) | 존스턴 기관 MECH_JO | +0.025 [+0.017, +0.034] | 3/1/16 → 1/1/18 |
+| 가중치 ×10 | VIS_R1R6 | +0.337 [+0.310, +0.363] | 9/0/11 → 0/5/15 |
+| 가중치 ×20 | VIS_R1R6 | +0.418 [+0.389, +0.447] | 10/0/10 → 0/12/8 |
+| 가중치 ×40 | VIS_R1R6 | +0.364 [+0.343, +0.384] | 5/0/15 → 0/7/13 |
+
+| 가중치 배율 | 잡음만: 뇌 전체 발화/틱 | 잡음만: 하행 발화/시행 | 잡음만: 평균 d |
+|---:|---:|---:|---|
+| 1 | 119.1 | 56.8 | −0.006 |
+| 10 | 120.5 | 62.7 | −0.004 |
+| 20 | 124.0 | 77.1 | +0.016 |
+| 40 | 180.6 | 138.6 | −0.007 |
+
+- 결과 파일: `results/dose-response/table.md`, `results/dose-response-weights/table.md`, `results/dose-response-weights/baselines.md`
+- 명령어: `node experiments/sweep.js --config experiments/config/dose-response.json` (약 20분),
+  `node experiments/sweep.js --config experiments/config/dose-response-weights.json` (약 35분),
+  `node experiments/compare-baselines.js experiments/results/dose-response experiments/results/dose-response-weights`
+- 해석: 기본 모델에서는 신호가 있지만 아주 약함(시냅스 가중치 최대 0.15, 평균 ≈ 0.0008, 문턱 1.0). 세기 1 이상은 감각뉴런이 포화돼 결과가 같음.
+  가중치 ×40은 자극 없이도 뇌 전체 발화가 약 1.5배 → 제외.
+- 한계: 조건당 20회, 조건이 많아(다중비교) 개별 "신호 있음" 표시는 여러 세기에서 일관된지와 함께 봐야 함.
+
+## 3. 확인 실험 — 채택 설정(가중치 ×20, VIS_R1R6, 세기 1), 새 시드 100회씩
+
+| 조건 | 왼쪽 / 오른쪽 / 무반응 | 이항검정 p |
+|---|---|---:|
+| 왼쪽 눈만 자극 | 44 / 0 / 56 | 1.1 × 10⁻¹³ |
+| 오른쪽 눈만 자극 | 0 / 66 / 34 | 2.7 × 10⁻²⁰ |
+| 자극 없음 | 2 / 4 / 94 | 0.69 |
+
+- 짝지은 Δd = +0.415 [+0.404, +0.426]. 같은 시드의 자극 없음 시행을 빼면 자극 효과는 왼쪽 +0.204, 오른쪽 −0.211로 대칭
+  (`runs/*/trials.csv`의 `lateralization_d`를 시드별로 빼서 평균).
+- 결과 파일: `results/confirm-w20-vis/table.md`, `results/confirm-w20-vis/runs/*/summary.json`, `results/confirm-w20-vis/baselines.md`
+- 명령어: `node experiments/sweep.js --config experiments/config/confirm-w20-vis.json` (약 15분),
+  `node experiments/compare-baselines.js experiments/results/confirm-w20-vis`
+- 한계: 가중치 ×20은 원래 FlyWire 연결 강도를 실험용으로 키운 것(웹 앱은 그대로). 27개 조건 중 고른 설정이라 새 시드로 다시 확인함.
+
+## 4. 6개 기간 거래 실험 (수수료 0.6%)
+
+| 기간 (UTC, 26시간) | 구분 | 순수익률 | 초파리 평균 [최저~최고] (회) | 초파리 주문 | 규칙 투자자 (주문) | 무작위 1만 명 평균 | 초파리 > 규칙 | 같은 주문 수 무작위 대비 잔차 [95% CI] |
+|---|---|---:|---|---:|---|---:|---:|---|
+| 2026-09-10 (STONKFLY) | — | +1.31% | +$0.03 [−$0.46 ~ +$0.94] (30) | 4.0 | −$1.10 (22) | −$0.15 | 30/30 | −$0.02 [−$0.13, +$0.08] |
+| 2025-09-10 | 상승장 | +2.55% | +$0.02 [−$0.19 ~ +$0.25] (10) | 3.6 | −$0.64 (26) | −$0.53 | 10/10 | +$0.04 [−$0.05, +$0.13] |
+| 2026-02-20 | 상승장 | +1.18% | −$0.31 [−$0.66 ~ +$0.01] (10) | 4.7 | −$1.61 (26) | −$0.69 | 10/10 | −$0.13 [−$0.22, −$0.05] |
+| 2026-05-26 | 하락장 | −1.27% | −$0.18 [−$0.39 ~ +$0.00] (10) | 2.2 | −$1.46 (20) | −$1.15 | 10/10 | −$0.00 [−$0.04, +$0.04] |
+| 2026-07-31 | 하락장 | −2.57% | −$0.10 [−$0.34 ~ +$0.00] (10) | 1.8 | −$1.00 (18) | −$1.17 | 10/10 | +$0.05 [+$0.02, +$0.07] |
+| 2026-08-18 | 횡보장 | −0.02% | −$0.10 [−$0.25 ~ +$0.00] (10) | 2.1 | −$1.52 (24) | −$0.87 | 10/10 | +$0.01 [−$0.01, +$0.04] |
+
+- 80회 합산 잔차: **−$0.01 [−$0.06, +$0.03]** → 초파리 손익은 거래 횟수로 설명됨(실력 증거 없음).
+- 참고: STONKFLY 기간 첫 실행(세기 기준 "max" = 기간 최대 수익률, 미래 정보 사용)은 초파리 30회 평균 −$0.00, 74% 보유,
+  같은 행동 비율 무작위 집단 안 백분위 47%. 고정 1%로 바꾼 위 결과와 결론 같음(짝지은 차이 +$0.03 [−$0.03, +$0.09]).
+- 기간 선택: 00:00 UTC에 시작하는 26시간 기간 638개 중 순수익률 10·25·50·75·90 백분위에 가장 가까운 기간(초파리 결과를 보기 전에 정함).
+- 결과 파일: `results/periods/summary.md`, `results/periods/selection.md`, 기간별 `results/periods/<id>/table.md`·`chart.html`,
+  STONKFLY `results/trade-stonkfly-window-fixed1pct/`, 첫 실행 `results/trade-stonkfly-window/`
+- 명령어: `node experiments/select-periods.js` →
+  `node experiments/periods.js experiments/config/trade-stonkfly-window.json experiments/config/trade-stonkfly-window-fixed1pct.json experiments/config/periods/*.json`
+  (초파리 실행 약 75분 + 첫 실행 30회 약 60분; 표만: `--only-table` 추가)
+- 한계: 기간 6개(각 26시간)·2025-09 ~ 2026-09에 몰림, 결정마다 뇌 초기화(기억 없음), 유의한 기간 2개(−$0.13, +$0.05)는 부호가 반대로 우연 수준.
+  `btcusd_1h.csv`의 타임스탬프는 복원한 값(`prices/fix-1h-timestamps.js`, 1분봉과 대조해 일치 확인).
+
+## 5. 수수료 반사실 — 결정은 그대로, 수수료만 바꿈
+
+| 수수료 | 초파리 > 규칙 (회차) | 초파리 평균 > 규칙 (기간) | 기간 평균 차이 (초파리 − 규칙) |
+|---|---:|---:|---:|
+| 0.6% (실험 조건) | 80/80 | 6/6 | +$1.11 |
+| 0.1% | 63/80 | 5/6 | +$0.14 |
+| 0% | 45/80 | 4/6 | −$0.05 |
+
+- 수수료 0%에서 2025-09-10 상승장은 규칙 투자자가 앞섬(+$0.92 vs 초파리 +$0.24).
+- 결과 파일: `results/fee-counterfactual/table.md` (`table.csv`, `summary.json`)
+- 명령어: `node experiments/fee-counterfactual.js experiments/config/trade-stonkfly-window-fixed1pct.json experiments/config/periods/*.json` (약 1분, 뇌 시뮬레이션 없음)
+- 한계: 수수료가 달라도 투자자의 결정이 같다고 가정함.
+
+## 6. 매핑 반전 — 오르면 오른쪽 눈 (같은 시드, 기간마다 10회)
+
+| 기간 | 상승/하락 시간 | 매수·매도·보유: 원래 → 반전 | 거래 중 규칙과 같은 방향 | 초파리 손익: 원래 → 반전 | 반대 규칙 투자자 |
+|---|---|---|---|---|---:|
+| 2026-09-10 STONKFLY | 12/14 | 12·13·75% → 13·9·78% | 94% → 7% | +$0.06 → +$0.16 | −$0.68 |
+| 2025-09-10 상승장 | 14/12 | 12·4·85% → 2·10·88% | 83% → 17% | +$0.02 → −$0.02 | −$1.06 |
+| 2026-02-20 상승장 | 16/10 | 12·10·78% → 11·13·77% | 98% → 3% | −$0.31 → −$0.13 | −$0.99 |
+| 2026-05-26 하락장 | 10/16 | 6·11·83% → 10·8·81% | 91% → 10% | −$0.18 → −$0.32 | −$1.88 |
+| 2026-07-31 하락장 | 10/16 | 5·13·82% → 12·5·83% | 89% → 9% | −$0.10 → −$0.31 | −$2.40 |
+| 2026-08-18 횡보장 | 13/13 | 5·7·88% → 7·8·85% | 90% → 15% | −$0.10 → −$0.16 | −$1.21 |
+
+- 거래 방향은 뒤집힘(규칙과 같은 방향 평균 91% → 10%). 손익은 반대 규칙 투자자와 비슷해지지 않고 0 근처(보유 77~88%).
+  반전 60회 합산 잔차 +$0.01 [−$0.03, +$0.05].
+- 결과 파일: `results/reversed/comparison.md`, `results/reversed/summary.md`
+- 명령어: `node experiments/periods.js --out reversed experiments/config/reversed/stonkfly.json experiments/config/reversed/p2*.json` (약 100분),
+  `node experiments/compare-mapping.js`
+- 한계: 원래 매핑은 같은 시드인 반복 0~9만 비교에 사용, 기간 6개.
+
+## 7. 강건성 — 가중치 ×10으로 6개 기간 다시 실행
+
+ROBUSTNESS_PLACEHOLDER
+
+## 그림
+
+| 그림 | 파일 | 명령어 |
+|---|---|---|
+| 6개 기간 요약(손익·수수료·매핑) | `results/figures/summary.html` (.png) | `node experiments/figure-summary.js` |
+| 매수 결정 1회의 뉴런 지도 | `results/figures/neurons-buy.html` (.png, .json) | `node experiments/figure-neurons.js --config experiments/config/trade-stonkfly-window-fixed1pct.json` |
+| 기간별 손익 분포 | `results/<기간>/chart.html` | `node experiments/trade.js --config <설정> --only-report` |
+
+- 뉴런 지도: STONKFLY 기간 결정 #6(+0.86%, 왼쪽 눈 세기 0.86), 반복 0. 하행 뉴런 82 : 43, d = +0.314. 왼쪽 광수용체 71,386회 vs 오른쪽 209회.
+  저장된 결정을 같은 시드로 재생해 일치를 확인한 뒤 그림. 시행 1회의 모습이라 모든 매수를 대표하지는 않음.
+- PNG는 HTML을 Chromium으로 열어 캡처한 것.
