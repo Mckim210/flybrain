@@ -1,0 +1,47 @@
+{
+  "_comment": "[탐색] 강건성 확인 (1): 기존 거래 기록 약 4,400회로 만든 큰 표본 반응 곡선(좌우 합침)으로 기본 설정(기준값 ×1)만 다시 실행. robustness.js가 곡선을 만든 뒤 이 설정으로 run-market.js를 부름.",
+  "name": "robustness/big-curve",
+  "curve": "experiments/market/results/robustness/big-curve.json",
+  "investors": 500,
+  "steps": 500,
+  "seeds": 50,
+  "random": {
+    "pBuy": 0.25,
+    "pSell": 0.25
+  },
+  "base": {
+    "lambda": 0.02,
+    "sigma": 0.003
+  },
+  "fractions": [
+    0.25,
+    0.5,
+    0.75
+  ],
+  "types": [
+    "fly",
+    "flyRev",
+    "rule",
+    "ruleRev",
+    "ruleSoft"
+  ],
+  "refQuantile": 0.9,
+  "refMultipliers": [
+    1
+  ],
+  "sensitivity": {
+    "fraction": 0.5,
+    "lambda": [
+      0.02
+    ],
+    "sigma": [
+      0.003
+    ]
+  },
+  "runawayLogMove": 1,
+  "btc": {
+    "prices": "experiments/prices/btcusd_1h.csv",
+    "blockLength": 500
+  },
+  "curveMode": "pooled"
+}

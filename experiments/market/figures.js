@@ -199,7 +199,8 @@ function btc(S) {
 	fs.writeFileSync(path.join(OUT, 'btc.html'), html.replace('.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}', '.grid{display:flex;gap:8px}'));
 }
 
-function screenshots(names) {
+function screenshots(names, dir) {
+	dir = dir || OUT;
 	var pw;
 	try { pw = require('playwright'); } catch (e) {
 		try { pw = require(path.join(require('child_process').execSync('npm root -g').toString().trim(), 'playwright')); } catch (e2) { console.log('playwright not found: PNGs skipped'); return Promise.resolve(); }
@@ -208,8 +209,8 @@ function screenshots(names) {
 		return names.reduce(function (p, n) {
 			return p.then(function () {
 				return browser.newPage({ viewport: { width: 1160, height: 400 }, deviceScaleFactor: 2 }).then(function (pg) {
-					return pg.goto('file://' + path.join(OUT, n + '.html'))
-						.then(function () { return pg.locator('.wrap').screenshot({ path: path.join(OUT, n + '.png') }); })
+					return pg.goto('file://' + path.join(dir, n + '.html'))
+						.then(function () { return pg.locator('.wrap').screenshot({ path: path.join(dir, n + '.png') }); })
 						.then(function () { return pg.close(); });
 				});
 			});
@@ -232,4 +233,6 @@ function main() {
 		.catch(function (e) { console.error(e); process.exit(1); });
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { page: page, frame: frame, svg: svg, niceTicks: niceTicks, esc: esc, screenshots: screenshots, COLORS: COLORS };
