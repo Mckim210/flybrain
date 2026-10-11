@@ -12,6 +12,8 @@
  *   flyRev   same, eyes swapped (up -> right eye)
  *   rule     |r| > threshold -> trade in the direction of r, else hold
  *   ruleRev  |r| > threshold -> trade against r
+ *   ruleSoft |r| > threshold -> each investor trades in the direction of r with
+ *            probability softProb (exploratory: a rule with the fly's ceiling)
  * Random streams (per seed): news, random investors and trend investors use
  * separate generators, so runs with the same seed and fraction share news and
  * random-investor decisions exactly.
@@ -26,11 +28,12 @@ function gaussian(rng) {
 	return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rng());
 }
 
-/* curve.json -> function (eye, s) -> {same, opp}, linear between measured intensities */
-function makeCurve(curve) {
+/* curve.json -> function (eye, s) -> {same, opp}, linear between measured intensities.
+ * mode 'pooled' uses the left+right pooled curve for both eyes (exploratory). */
+function makeCurve(curve, mode) {
 	var xs = curve.intensities;
 	return function (eye, s) {
-		var pts = curve[eye];
+		var pts = mode === 'pooled' ? curve.pooled : curve[eye];
 		if (s >= xs[xs.length - 1]) return { same: pts[xs.length - 1].same, opp: pts[xs.length - 1].opp };
 		for (var i = 1; i < xs.length; i++) {
 			if (s <= xs[i]) {
@@ -78,6 +81,10 @@ function run(o) {
 				for (var j = 0; j < nTrend; j++) {
 					var v = trendRng();
 					if (v < p.buy) tb++; else if (v < p.buy + p.sell) ts++;
+				}
+			} else if (o.type === 'ruleSoft') {
+				if (Math.abs(r) > o.threshold) {
+					for (var j = 0; j < nTrend; j++) if (trendRng() < o.softProb) { if (r > 0) tb++; else ts++; }
 				}
 			} else if (Math.abs(r) > o.threshold) {
 				var dir = (r > 0) === (o.type === 'rule') ? 1 : -1;

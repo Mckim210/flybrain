@@ -22,7 +22,7 @@ var LABEL = {
 	volatility: '변동성', maxDrawdown: '최대 낙폭', maxRunup: '최대 상승폭', acfR1: 'ACF(r,1)', acfAbs1: 'ACF(|r|,1)',
 	acfAbs5: 'ACF(|r|,5)', acfAbs10: 'ACF(|r|,10)', kurtosis: '초과첨도', maxRise: '최대 1단계 급등', maxFall: '최대 1단계 급락', runaway: '폭주 시드'
 };
-var TYPE_LABEL = { random: '무작위만', fly: '(a) 초파리', flyRev: '(b) 초파리 역발상', rule: '(c) 문턱 규칙', ruleRev: '(d) 역발상 규칙(참고)' };
+var TYPE_LABEL = { random: '무작위만', fly: '(a) 초파리', flyRev: '(b) 초파리 역발상', rule: '(c) 문턱 규칙', ruleRev: '(d) 역발상 규칙(참고)', ruleSoft: '(e) 확률적 문턱 규칙(탐색)' };
 var SHAPE = ['kurtosis', 'acfR1', 'acfAbs1', 'acfAbs5', 'acfAbs10'];
 
 function settingKey(s) { return 'L' + s.lambda + '_S' + s.sigma; }
@@ -47,7 +47,9 @@ function main() {
 	var outDir = path.join(__dirname, 'results', cfg.name);
 	fs.mkdirSync(outDir, { recursive: true });
 	var curve = JSON.parse(fs.readFileSync(path.resolve(ROOT, cfg.curve), 'utf8'));
-	var curveFn = M.makeCurve(curve);
+	var curveFn = M.makeCurve(curve, cfg.curveMode);
+	// exploratory ruleSoft: trade probability = the fly's same-direction probability at full intensity
+	var softProb = curve.pooled[curve.pooled.length - 1].same;
 
 	var settings = [cfg.base];
 	cfg.sensitivity.lambda.forEach(function (l) { settings.push({ lambda: l, sigma: cfg.base.sigma }); });
@@ -56,10 +58,11 @@ function main() {
 	settings = settings.filter(function (s) { var k = settingKey(s); if (seen[k]) return false; seen[k] = 1; return true; });
 
 	function runCondition(setting, type, fraction, ref, threshold) {
+		if (typeof threshold === 'object') threshold = type === 'ruleSoft' ? threshold.soft : threshold.rule;
 		var rows = [], trade = [], returns = [];
 		for (var seed = 1; seed <= cfg.seeds; seed++) {
 			var res = M.run({ investors: cfg.investors, steps: cfg.steps, lambda: setting.lambda, sigma: setting.sigma,
-				fraction: fraction, type: type, ref: ref, threshold: threshold, curveFn: curveFn,
+				fraction: fraction, type: type, ref: ref, threshold: threshold, curveFn: curveFn, softProb: softProb,
 				pBuy: cfg.random.pBuy, pSell: cfg.random.pSell, seed: seed });
 			var m = M.runMetrics(res, cfg.runawayLogMove);
 			m.seed = seed;
@@ -94,13 +97,19 @@ function main() {
 			}
 			var F = freq(false), Frev = freq(true);
 			var threshold = M.quantile(absSorted, 1 - F);
+			var thresholdSoft = cfg.types.indexOf('ruleSoft') >= 0 ? M.quantile(absSorted, Math.max(0, 1 - F / softProb)) : null;
 			calib[key].byMultiplier[mult] = { ref: ref, flyTradeFreq: F, flyRevTradeFreq: Frev, threshold: threshold,
 				thresholdOverRef: threshold / ref, thresholdOverSd: threshold / calib[key].randomSd,
 				ruleTradeFreqCheck: absSorted.filter(function (x) { return x > threshold; }).length / absSorted.length };
+			if (thresholdSoft !== null) {
+				calib[key].byMultiplier[mult].softProb = softProb;
+				calib[key].byMultiplier[mult].thresholdSoft = thresholdSoft;
+				calib[key].byMultiplier[mult].softTradeFreqCheck = softProb * absSorted.filter(function (x) { return x > thresholdSoft; }).length / absSorted.length;
+			}
 			fracs.forEach(function (f) {
 				cfg.types.forEach(function (type) {
 					conds.push({ setting: st, key: key, type: type, fraction: f, refMult: mult,
-						res: runCondition(st, type, f, ref, threshold) });
+						res: runCondition(st, type, f, ref, { rule: threshold, soft: thresholdSoft }) });
 				});
 			});
 		});
@@ -202,7 +211,9 @@ function main() {
 	var verdicts = [];
 	function addVerdicts(key, mult, f, label) {
 		var a = findCond(key, 'fly', f, mult);
-		[['rule', '(a) vs (c)'], ['flyRev', '(a) vs (b)'], ['ruleRev', '(b) vs (d) 참고']].forEach(function (pr) {
+		var pairs = [['rule', '(a) vs (c)'], ['flyRev', '(a) vs (b)'], ['ruleRev', '(b) vs (d) 참고']];
+		if (cfg.types.indexOf('ruleSoft') >= 0) pairs.push(['ruleSoft', '(a) vs (e) 탐색']);
+		pairs.forEach(function (pr) {
 			var A = pr[0] === 'ruleRev' ? findCond(key, 'flyRev', f, mult) : a;
 			var B = findCond(key, pr[0], f, mult);
 			var c = compare(A, B);
@@ -220,7 +231,9 @@ function main() {
 	var vm = ['# 판정: 같은 비율에서 (a) 초파리와 (c) 문턱 규칙이 다른가 (PLAN.md 4절 기준)', '',
 		'지표별로 95% 신뢰구간이 겹치지 않으면 "다름". 11개 지표 중 2개 이상 → 다르다, 1개 → 약한 차이, 0개 → 구별되지 않음.',
 		'짝지은 차이 = 같은 시드끼리 (앞 − 뒤)의 평균 [95% CI] (보조 지표, 판정에는 안 씀).', ''];
-	['(a) vs (c)', '(a) vs (b)', '(b) vs (d) 참고'].forEach(function (pair) {
+	['(a) vs (c)', '(a) vs (b)', '(b) vs (d) 참고', '(a) vs (e) 탐색'].filter(function (pair) {
+		return verdicts.some(function (v) { return v.pair === pair; });
+	}).forEach(function (pair) {
 		vm.push('## ' + pair, '');
 		vm.push('| 설정 | 비율 | 판정 | 다른 지표 | 폭주 (앞/뒤) | 변동성×1000 (앞/뒤) | ACF(r,1) (앞/뒤) | 짝지은 차이: ACF(r,1) | 짝지은 차이: 변동성×1000 |');
 		vm.push('|---|---:|---|---|---|---|---|---|---|');

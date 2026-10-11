@@ -1,0 +1,53 @@
+{
+  "_comment": "탐색(사후) 분석 — PLAN.md에 없던 실행. 좌우 합친 대칭 반응 곡선(curveMode pooled)과 확률적 문턱 규칙 (e)(문턱을 넘으면 초파리 최대 반응 확률로 거래)을 추가. 사전 계획 결과(results/market)와 따로 보관.",
+  "name": "market-explore-pooled",
+  "curve": "experiments/market/results/response-curve/curve.json",
+  "investors": 500,
+  "steps": 500,
+  "seeds": 50,
+  "random": {
+    "pBuy": 0.25,
+    "pSell": 0.25
+  },
+  "base": {
+    "lambda": 0.02,
+    "sigma": 0.003
+  },
+  "fractions": [
+    0.25,
+    0.5,
+    0.75
+  ],
+  "types": [
+    "fly",
+    "flyRev",
+    "rule",
+    "ruleRev",
+    "ruleSoft"
+  ],
+  "refQuantile": 0.9,
+  "refMultipliers": [
+    0.5,
+    1,
+    2
+  ],
+  "sensitivity": {
+    "fraction": 0.5,
+    "lambda": [
+      0.01,
+      0.02,
+      0.04
+    ],
+    "sigma": [
+      0.0015,
+      0.003,
+      0.006
+    ]
+  },
+  "runawayLogMove": 1,
+  "btc": {
+    "prices": "experiments/prices/btcusd_1h.csv",
+    "blockLength": 500
+  },
+  "curveMode": "pooled"
+}
