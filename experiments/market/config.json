@@ -1,0 +1,17 @@
+{
+  "_comment": "PLAN.md 2절의 값 그대로. 바꾸면 결과 폴더 이름(name)도 바꿀 것.",
+  "name": "market",
+  "curve": "experiments/market/results/response-curve/curve.json",
+  "investors": 500,
+  "steps": 500,
+  "seeds": 50,
+  "random": { "pBuy": 0.25, "pSell": 0.25 },
+  "base": { "lambda": 0.02, "sigma": 0.003 },
+  "fractions": [0.25, 0.5, 0.75],
+  "types": ["fly", "flyRev", "rule", "ruleRev"],
+  "refQuantile": 0.9,
+  "refMultipliers": [0.5, 1, 2],
+  "sensitivity": { "fraction": 0.5, "lambda": [0.01, 0.02, 0.04], "sigma": [0.0015, 0.003, 0.006] },
+  "runawayLogMove": 1,
+  "btc": { "prices": "experiments/prices/btcusd_1h.csv", "blockLength": 500 }
+}
