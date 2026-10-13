@@ -76,7 +76,33 @@ function trialSeed(cfg, repeat, decision) {
 	return cfg.fly.seed + repeat * 1000 + decision;
 }
 
+/* Everything that decides what a saved fly run contains (all but the number of
+ * repeats). Stored in each rep file so a changed config under the same name is
+ * caught instead of silently mixing old and new runs. */
+function runKey(cfg) {
+	var fly = {};
+	Object.keys(cfg.fly).sort().forEach(function (k) { if (k !== 'repeats') fly[k] = cfg.fly[k]; });
+	return JSON.stringify({ prices: cfg.prices, window: cfg.window || null, intervalMin: cfg.intervalMin, fly: fly });
+}
+
+function repFile(cfg, k) {
+	return path.join(__dirname, '..', 'results', cfg.name, 'fly', 'rep_' + String(k).padStart(2, '0') + '.json');
+}
+
+/* Saved fly run k for this config. Runs saved before run keys existed have no
+ * key and are accepted as they are. */
+function readRep(cfg, k) {
+	var file = repFile(cfg, k);
+	var rep = JSON.parse(fs.readFileSync(file, 'utf8'));
+	if (rep.runKey !== undefined && rep.runKey !== runKey(cfg)) {
+		throw new Error(file + ' was made with different settings than ' + cfg.name +
+			' now has; delete the results folder or use a new name');
+	}
+	return rep;
+}
+
 module.exports = {
 	loadTradeConfig: loadTradeConfig, loadPrices: loadPrices, fullScaleReturn: fullScaleReturn,
-	intensityFor: intensityFor, eyeFor: eyeFor, trialConfig: trialConfig, trialSeed: trialSeed
+	intensityFor: intensityFor, eyeFor: eyeFor, trialConfig: trialConfig, trialSeed: trialSeed,
+	runKey: runKey, repFile: repFile, readRep: readRep
 };

@@ -77,7 +77,17 @@ function runAll(conds, outDir, concurrency) {
 	fs.mkdirSync(cfgDir, { recursive: true });
 	var queue = conds.filter(function (c) {
 		var done = path.join(__dirname, 'results', c.cfg.name, 'summary.json');
-		if (fs.existsSync(done)) { console.log('  skip (already done): ' + c.id); return false; }
+		if (!fs.existsSync(done)) return true;
+		// reuse only if it was made with the same settings (e.g. not a different --trials)
+		var saved = JSON.parse(fs.readFileSync(done, 'utf8')).config;
+		Object.keys(c.cfg).forEach(function (k) {
+			if (JSON.stringify(saved[k]) !== JSON.stringify(c.cfg[k])) {
+				throw new Error(c.id + ': saved result has ' + k + ' = ' + JSON.stringify(saved[k]) + ' but the config asks for ' +
+					JSON.stringify(c.cfg[k]) + '; delete ' + path.dirname(done) + ' or use --name');
+			}
+		});
+		console.log('  skip (already done): ' + c.id);
+		return false;
 		return true;
 	});
 	var total = queue.length, finished = 0, t0 = Date.now();
@@ -121,17 +131,11 @@ function readTrials(c) {
 	});
 }
 
-/* two-sided t critical value for 95% (Cornish-Fisher expansion, good for df >= 5) */
-function tCrit95(df) {
-	var z = 1.959963984540054;
-	return z + (z * z * z + z) / (4 * df) + (5 * Math.pow(z, 5) + 16 * Math.pow(z, 3) + 3 * z) / (96 * df * df);
-}
-
 function pairedSummary(diffs) {
 	var n = diffs.length;
 	var m = diffs.reduce(function (s, x) { return s + x; }, 0) / n;
 	var v = diffs.reduce(function (s, x) { return s + (x - m) * (x - m); }, 0) / (n - 1);
-	var half = tCrit95(n - 1) * Math.sqrt(v / n);
+	var half = stats.tCrit95(n - 1) * Math.sqrt(v / n);
 	return { n: n, mean: m, lo: m - half, hi: m + half };
 }
 
@@ -221,7 +225,7 @@ function main() {
 	var conds = buildConditions(sw);
 	console.log('[' + sw.name + '] ' + conds.length + ' conditions x ' + sw.trials + ' trials');
 	var p = args.onlyTable ? Promise.resolve()
-		: runAll(conds, outDir, sw.concurrency || require('os').cpus().length);
+		: Promise.resolve().then(function () { return runAll(conds, outDir, sw.concurrency || require('os').cpus().length); });
 	p.then(function () { buildTable(sw, conds, outDir); })
 		.catch(function (err) { console.error(err.message); process.exit(1); });
 }

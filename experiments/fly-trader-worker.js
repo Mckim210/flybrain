@@ -37,8 +37,8 @@ function main() {
 	var out = trial.prepareReadout(brain, cfg.fly.readout);
 
 	repeats.forEach(function (k) {
-		var file = path.join(outDir, 'rep_' + String(k).padStart(2, '0') + '.json');
-		if (fs.existsSync(file)) return;
+		var file = common.repFile(cfg, k);
+		if (fs.existsSync(file)) { common.readRep(cfg, k); return; } // throws if settings changed
 		var decisions = points.map(function (p, j) {
 			var amp = common.intensityFor(cfg, p.ret, fullScale);
 			var tcfg = common.trialConfig(cfg, p.ret, fullScale);
@@ -51,7 +51,7 @@ function main() {
 				action: r.choice === 'left' ? 'buy' : (r.choice === 'right' ? 'sell' : 'hold')
 			};
 		});
-		fs.writeFileSync(file, JSON.stringify({ repeat: k, decisions: decisions }, null, 1) + '\n');
+		fs.writeFileSync(file, JSON.stringify({ repeat: k, runKey: common.runKey(cfg), decisions: decisions }, null, 1) + '\n');
 		console.log('repeat ' + k + ' done');
 	});
 }

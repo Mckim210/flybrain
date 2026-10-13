@@ -29,10 +29,9 @@ function analyse(file) {
 	var prices = common.loadPrices(cfg);
 	var points = market.decisionPoints(prices, cfg.intervalMin);
 	var finalPrice = prices[prices.length - 1].close;
-	var flyDir = path.join(__dirname, 'results', cfg.name, 'fly');
 	var flyActs = [];
 	for (var k = 0; k < cfg.fly.repeats; k++) {
-		var rep = JSON.parse(fs.readFileSync(path.join(flyDir, 'rep_' + String(k).padStart(2, '0') + '.json'), 'utf8'));
+		var rep = common.readRep(cfg, k);
 		flyActs.push(rep.decisions.map(function (d) { return d.action; }));
 	}
 	var cnt = { buy: 0, sell: 0, hold: 0 };
