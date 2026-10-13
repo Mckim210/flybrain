@@ -118,12 +118,12 @@ function main() {
 	conds.forEach(function (c) { c.summary = summarize(c.res.rows); });
 
 	/* ---- per-seed and per-condition CSV ---- */
-	var ps = ['lambda,sigma,ref_mult,type,fraction,seed,' + METRICS.join(',') + ',max_abs_log_move,final_log_price'];
+	var ps = ['lambda,sigma,ref_mult,type,fraction,seed,' + METRICS.join(',') + ',runaway_direction,max_abs_log_move,final_log_price'];
 	conds.forEach(function (c) {
 		c.res.rows.forEach(function (r) {
 			ps.push([c.setting.lambda, c.setting.sigma, c.refMult === null ? '' : c.refMult, c.type, c.fraction, r.seed]
 				.concat(METRICS.map(function (m) { return +r[m].toPrecision(6); }))
-				.concat([+r.maxAbsLogMove.toPrecision(6), +r.finalLogPrice.toPrecision(6)]).join(','));
+				.concat([r.runawayDir, +r.maxAbsLogMove.toPrecision(6), +r.finalLogPrice.toPrecision(6)]).join(','));
 		});
 	});
 	fs.writeFileSync(path.join(outDir, 'per-seed.csv'), ps.join('\n') + '\n');
