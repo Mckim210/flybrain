@@ -82,7 +82,6 @@ function HeadlessBrain() {
 	for (var i = 0; i < meta.groups.length; i++) this.groupNames[meta.groups[i].id] = meta.groups[i].name;
 
 	/* load the worker source into its own context */
-	var self = this;
 	var messages = [];
 	var sandbox = {
 		console: console,
@@ -129,7 +128,6 @@ function HeadlessBrain() {
 	this._stim = null;      // {indices, intensities} sustained sensory input
 	this._noise = null;     // {rate, amplitude, rng}
 	this._post = sandbox.self.onmessage;
-	void self;
 }
 
 /* Sorted indices of neurons matching a filter. filter: {group, side, superClass} */

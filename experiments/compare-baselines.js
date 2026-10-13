@@ -3,6 +3,7 @@
  *
  * Usage:
  *   node experiments/compare-baselines.js experiments/results/dose-response experiments/results/dose-response-weights
+ *   node experiments/compare-baselines.js --out experiments/results/dose-response-weights/baselines.md experiments/results/dose-response experiments/results/dose-response-weights
  *
  * Reads every runs/none_* condition (no stimulus, background noise only) under
  * the given sweep result folders and prints, per weight scale / threshold:
@@ -10,6 +11,9 @@
  *   - left vs right spikes in the most active groups (is the whole brain lopsided?)
  *   - descending-neuron spikes and the mean lateralization d (is the readout biased?)
  *   - choice counts and the binomial test against 50:50
+ * "Mean d" here averages every trial, counting a trial with no descending spikes
+ * as d = 0 (run-trials.js averages only trials with spikes).
+ * With --out FILE the table is also written to FILE.
  */
 'use strict';
 
@@ -30,7 +34,10 @@ function readCsv(file) {
 function f(x, n) { return (x >= 0 ? '+' : '') + x.toFixed(n); }
 
 var rows = [];
-process.argv.slice(2).forEach(function (dir) {
+var argv = process.argv.slice(2), OUT = null;
+var oi = argv.indexOf('--out');
+if (oi >= 0) { OUT = argv[oi + 1]; argv.splice(oi, 2); }
+argv.forEach(function (dir) {
 	var runs = path.join(dir, 'runs');
 	fs.readdirSync(runs).filter(function (d) { return d.indexOf('none_') === 0; }).forEach(function (d) {
 		var summary = JSON.parse(fs.readFileSync(path.join(runs, d, 'summary.json'), 'utf8'));
@@ -56,11 +63,14 @@ process.argv.slice(2).forEach(function (dir) {
 });
 rows.sort(function (a, b) { return a.weightScale - b.weightScale || a.threshold - b.threshold; });
 
-console.log('| 가중치 배율 | 문턱 | 시행 | 뇌 전체 발화/틱 | 상위 10개 그룹 왼쪽 비율 | 하행 발화/시행 | 평균 d [95% CI] | 선택 L/R/무 | 이항검정 p |');
-console.log('|---:|---:|---:|---:|---:|---:|---|---|---:|');
+var lines = [];
+lines.push('| 가중치 배율 | 문턱 | 시행 | 뇌 전체 발화/틱 | 상위 10개 그룹 왼쪽 비율 | 하행 발화/시행 | 평균 d [95% CI] | 선택 L/R/무 | 이항검정 p |');
+lines.push('|---:|---:|---:|---:|---:|---:|---|---|---:|');
 rows.forEach(function (r) {
-	console.log('| ' + r.weightScale + ' | ' + r.threshold + ' | ' + r.trials + ' | ' + r.spikesPerTick.toFixed(1) + ' | ' +
+	lines.push('| ' + r.weightScale + ' | ' + r.threshold + ' | ' + r.trials + ' | ' + r.spikesPerTick.toFixed(1) + ' | ' +
 		(100 * r.brainLeftShare).toFixed(1) + '% | ' + r.descPerTrial.toFixed(1) + ' | ' +
 		f(r.d.mean, 3) + ' [' + f(r.d.lo, 3) + ', ' + f(r.d.hi, 3) + '] | ' +
 		r.counts.left + '/' + r.counts.right + '/' + r.counts.none + ' | ' + r.p.toPrecision(2) + ' |');
 });
+console.log(lines.join('\n'));
+if (OUT) fs.writeFileSync(OUT, lines.join('\n') + '\n');

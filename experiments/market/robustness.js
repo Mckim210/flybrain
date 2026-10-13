@@ -39,7 +39,6 @@ var BOOT_SEED = 20261011;
 function pct(x, d) { return (100 * x).toFixed(d === undefined ? 0 : d) + '%'; }
 function median(xs) { var s = xs.slice().sort(function (a, b) { return a - b; }); var n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }
 function sortedQ(xs, q) { return M.quantile(xs.slice().sort(function (a, b) { return a - b; }), q); }
-function prop(k, n) { var w = stats.wilson(k, n); return { p: k / n, lo: w[0], hi: w[1] }; }
 function point(same, opp, none) {
 	var n = same + opp + none;
 	return { n: n, same: same / n, opp: opp / n, none: none / n,

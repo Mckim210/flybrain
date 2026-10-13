@@ -88,7 +88,6 @@ function runAll(conds, outDir, concurrency) {
 		});
 		console.log('  skip (already done): ' + c.id);
 		return false;
-		return true;
 	});
 	var total = queue.length, finished = 0, t0 = Date.now();
 	return new Promise(function (resolve, reject) {

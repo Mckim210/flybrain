@@ -6,8 +6,9 @@ Trading rules copied from nftechie/stonkfly (commit 78ef3e0, stonkfly/config.py 
   BUY  size = min(10, cash) / 1.02 / price
   SELL size = min(position, 10 / price)
 Prices: Bitstamp BTC/USD 1-minute candles (ff137/bitstamp-btcusd-minute-data, CC BY-SA 4.0),
-read from experiments/prices/btcusd_stonkfly_window_1min.csv. Only the STONKFLY window is analysed here.
-used as a proxy for Coinbase BTC-USDC. Fills at the minute close (no bid/ask available).
+used as a proxy for Coinbase BTC-USDC and read from
+experiments/prices/btcusd_stonkfly_window_1min.csv. Only the STONKFLY window is analysed here.
+Fills at the minute close (no bid/ask available).
 """
 import json
 from pathlib import Path
@@ -96,10 +97,7 @@ def main():
         }
     out = Path(__file__).resolve().parent / "results.json"
     json.dump(res, open(out, "w"), indent=1)
-    r = {k: v for k, v in res.items()}
-    for m in ("coin_flip", "buy_bias"):
-        r[m] = {k: v for k, v in r[m].items() if k != "pnl"}
-    print(json.dumps(r, indent=1))
+    print(json.dumps(res, indent=1))
 
 
 if __name__ == "__main__":

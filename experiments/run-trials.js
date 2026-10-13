@@ -2,8 +2,8 @@
 /* run-trials.js — repeat left/right choice trials and test against 50:50
  *
  * Usage:
- *   node experiments/run-trials.js --config experiments/config/baseline.json
- *   node experiments/run-trials.js --config experiments/config/baseline.json --trials 20 --seed 7 --name quick
+ *   node experiments/run-trials.js --config experiments/config/baseline-noise.json
+ *   node experiments/run-trials.js --config experiments/config/baseline-noise.json --trials 20 --seed 7 --name quick
  *
  * Writes experiments/results/<name>/trials.csv and summary.json, and prints a table.
  */
