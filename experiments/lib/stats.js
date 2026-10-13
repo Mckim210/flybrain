@@ -55,4 +55,20 @@ function meanCI(xs) {
 	return { n: n, mean: m, lo: m - half, hi: m + half };
 }
 
-module.exports = { binomTwoSided: binomTwoSided, wilson: wilson, meanCI: meanCI, tCrit95: tCrit95 };
+/* Mean ± 1.96 × SE (normal approximation). Kept only for the market experiment,
+ * whose pre-registered plan (experiments/market/PLAN.md §3) fixes 1.96; everything
+ * else uses meanCI (Student's t). With 50 seeds the two differ by about 2.5%. */
+function meanCIz(xs) {
+	var n = xs.length;
+	if (n === 0) return { n: 0, mean: null, lo: null, hi: null };
+	var m = 0;
+	for (var i = 0; i < n; i++) m += xs[i];
+	m /= n;
+	if (n < 2) return { n: n, mean: m, lo: null, hi: null };
+	var v = 0;
+	for (var j = 0; j < n; j++) v += (xs[j] - m) * (xs[j] - m);
+	var se = Math.sqrt(v / (n - 1) / n);
+	return { n: n, mean: m, lo: m - 1.96 * se, hi: m + 1.96 * se };
+}
+
+module.exports = { binomTwoSided: binomTwoSided, wilson: wilson, meanCI: meanCI, meanCIz: meanCIz, tCrit95: tCrit95 };

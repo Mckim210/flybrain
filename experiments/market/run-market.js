@@ -34,7 +34,7 @@ function summarize(rows) {
 		if (m === 'runaway') {
 			var k = xs.reduce(function (a, b) { return a + b; }, 0), w = stats.wilson(k, xs.length);
 			out[m] = { n: xs.length, mean: k / xs.length, count: k, lo: w[0], hi: w[1] };
-		} else out[m] = stats.meanCI(xs);
+		} else out[m] = stats.meanCIz(xs);
 	});
 	return out;
 }
@@ -204,7 +204,7 @@ function main() {
 		var verdict = differ.length >= 2 ? '다르다' : (differ.length === 1 ? '약한 차이(우연 가능)' : '구별되지 않음');
 		var paired = {};
 		METRICS.forEach(function (m) {
-			paired[m] = stats.meanCI(A.res.rows.map(function (r, i) { return r[m] - B.res.rows[i][m]; }));
+			paired[m] = stats.meanCIz(A.res.rows.map(function (r, i) { return r[m] - B.res.rows[i][m]; }));
 		});
 		return { differ: differ, verdict: verdict, paired: paired };
 	}
@@ -256,7 +256,7 @@ function main() {
 	var L = cfg.btc.blockLength, blocks = [];
 	for (var b = 0; (b + 1) * L <= btcR.length; b++) blocks.push(M.shapeMetrics(btcR.slice(b * L, (b + 1) * L)));
 	var btcBlock = {}, btcFull = M.shapeMetrics(btcR);
-	SHAPE.forEach(function (m) { btcBlock[m] = stats.meanCI(blocks.map(function (x) { return x[m]; })); });
+	SHAPE.forEach(function (m) { btcBlock[m] = stats.meanCIz(blocks.map(function (x) { return x[m]; })); });
 	var cands = conds.filter(function (c) { return c.key === baseKey && (c.type === 'random' || c.refMult === 1); });
 	cands.forEach(function (c) { c.ranks = {}; });
 	SHAPE.forEach(function (m) {

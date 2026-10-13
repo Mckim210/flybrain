@@ -150,7 +150,7 @@ function summarizeRows(rows) {
 	var run = rows.filter(function (r) { return r.runaway; });
 	var out = { n: rows.length, runaway: run.length, up: run.filter(function (r) { return r.runawayDir > 0; }).length,
 		runawayCI: stats.wilson(run.length, rows.length), trade: rows.reduce(function (a, r) { return a + r.trade; }, 0) / rows.length };
-	['volatility', 'maxDrawdown', 'acfR1', 'acfAbs1'].forEach(function (k) { out[k] = stats.meanCI(rows.map(function (r) { return r[k]; })); });
+	['volatility', 'maxDrawdown', 'acfR1', 'acfAbs1'].forEach(function (k) { out[k] = stats.meanCIz(rows.map(function (r) { return r[k]; })); });
 	return out;
 }
 
