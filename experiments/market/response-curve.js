@@ -169,7 +169,10 @@ function report() {
 	md.push('| 세기 구간 | 대략치 같은/반대/무반응 | 측정 세기 | 측정 같은 방향 | 측정 반대 방향 | 측정 무반응 | 대략치가 측정 95% CI 안? |');
 	md.push('|---|---|---|---|---|---|---|');
 	ROUGH.forEach(function (g) {
-		var amps = INTENSITIES.filter(function (a) { return a >= g.lo && a <= g.hi && !(g.lo === 0.2 && a === 0.3); });
+		// a measured intensity on a shared boundary goes to the upper bin only (0.3 -> 0.3~0.5, 0.5 -> 0.5 이상)
+		var amps = INTENSITIES.filter(function (a) {
+			return a >= g.lo && a <= g.hi && !ROUGH.some(function (h) { return h !== g && h.lo === a && a === g.hi; });
+		});
 		var k = { n: 0, same: 0, opp: 0, none: 0 };
 		amps.forEach(function (a) {
 			var l = count('left_' + a, 'left'), r = count('right_' + a, 'right');
@@ -182,7 +185,7 @@ function report() {
 			pct(k.none / k.n) + ' (' + ci(k.none, k.n) + ') | ' + ok.join(', ') + ' |');
 	});
 	md.push('');
-	md.push('- 0.3은 "0.3~0.5" 구간에 넣음(대략치 구간 경계가 겹쳐서). 0.15처럼 측정하지 않은 세기는 시장 시뮬레이션에서 선형 보간.');
+	md.push('- 대략치 구간 경계가 겹쳐서, 경계에 있는 세기는 위 구간에만 넣음(0.3 → "0.3~0.5", 0.5 → "0.5 이상"). 0.15처럼 측정하지 않은 세기는 시장 시뮬레이션에서 선형 보간.');
 	fs.writeFileSync(path.join(OUT, 'table.md'), md.join('\n') + '\n');
 	console.log(md.join('\n'));
 }

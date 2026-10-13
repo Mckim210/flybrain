@@ -103,10 +103,14 @@ function buildBigCurve() {
 		md.push('| ' + curve.bins[i].range + ' | ' + x.toFixed(3) + ' | ' + p.n + ' | ' + pct(p.same) + ' [' + pct(p.sameCI[0]) + ', ' + pct(p.sameCI[1]) + '] | ' +
 			pct(p.opp, 1) + ' | ' + pct(p.none) + ' | ' + pct(smallFn('left', x).same) + ' |');
 	});
-	var c1 = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'results', 'confirm-w20-vis', 'summary.json'), 'utf8'));
-	md.push('', '- 세기 0은 자극한 눈이 없으므로 왼쪽·오른쪽 선택을 "같은 방향"과 "반대 방향"에 모두 넣은 값(n은 좌우 두 번 센 200).');
+	var runsDir = path.join(__dirname, '..', 'results', 'confirm-w20-vis', 'runs');
+	var cl = JSON.parse(fs.readFileSync(path.join(runsDir, 'VIS_R1R6_left_i1_w20_t1', 'summary.json'), 'utf8')).counts;
+	var cr = JSON.parse(fs.readFileSync(path.join(runsDir, 'VIS_R1R6_right_i1_w20_t1', 'summary.json'), 'utf8')).counts;
+	var nl = cl.left + cl.right + cl.none, nr = cr.left + cr.right + cr.none, cw = stats.wilson(cl.left + cr.right, nl + nr);
+	md.push('', '- 세기 0은 자극한 눈이 없으므로 왼쪽·오른쪽 선택을 "같은 방향"과 "반대 방향"에 모두 넣은 값(n은 좌우 두 번 센 ' + curve.pooled[0].n + ').');
 	md.push('- 상한(세기 1) 비교: 이 곡선 ' + pct(curve.pooled[curve.pooled.length - 1].same) + ', 30회 곡선 ' + pct(small.pooled[small.pooled.length - 1].same) +
-		', 참고로 `confirm-w20-vis` 세기 1 각 100회(왼쪽 44·오른쪽 66 → 합쳐 ' + pct(110 / 200) + ' [' + pct(stats.wilson(110, 200)[0]) + ', ' + pct(stats.wilson(110, 200)[1]) + ']).');
+		', 참고로 `confirm-w20-vis` 세기 1(왼쪽 눈 ' + cl.left + '/' + nl + '·오른쪽 눈 ' + cr.right + '/' + nr + ' → 합쳐 ' +
+		pct((cl.left + cr.right) / (nl + nr)) + ' [' + pct(cw[0]) + ', ' + pct(cw[1]) + ']).');
 	fs.writeFileSync(path.join(OUT, 'big-curve.md'), md.join('\n') + '\n');
 	return curve;
 }
@@ -144,13 +148,14 @@ function runSeeds(o) {
 
 function summarizeRows(rows) {
 	var run = rows.filter(function (r) { return r.runaway; });
-	var out = { n: rows.length, runaway: run.length, up: run.filter(function (r) { return r.finalLogPrice > 0; }).length,
+	var out = { n: rows.length, runaway: run.length, up: run.filter(function (r) { return r.runawayDir > 0; }).length,
 		runawayCI: stats.wilson(run.length, rows.length), trade: rows.reduce(function (a, r) { return a + r.trade; }, 0) / rows.length };
 	['volatility', 'maxDrawdown', 'acfR1', 'acfAbs1'].forEach(function (k) { out[k] = stats.meanCI(rows.map(function (r) { return r[k]; })); });
 	return out;
 }
 
-/* per-seed.csv of a run-market result -> {type|fraction: {runaway, up}} for the base setting, reference x1 */
+/* per-seed.csv of a run-market result -> {type|fraction: {runaway, up}} for the base setting, reference x1
+ * (up = runaways that first crossed upwards) */
 function runawayDirections(dir) {
 	var lines = fs.readFileSync(path.join(RES, dir, 'per-seed.csv'), 'utf8').trim().split('\n');
 	var h = lines[0].split(','), out = {};
@@ -161,7 +166,7 @@ function runawayDirections(dir) {
 		if (col(c, 'type') !== 'random' && +col(c, 'ref_mult') !== 1) return;
 		var k = col(c, 'type') + '|' + (+col(c, 'fraction'));
 		out[k] = out[k] || { runaway: 0, up: 0 };
-		if (+col(c, 'runaway')) { out[k].runaway++; if (+col(c, 'final_log_price') > 0) out[k].up++; }
+		if (+col(c, 'runaway')) { out[k].runaway++; if (+col(c, 'runaway_direction') > 0) out[k].up++; }
 	});
 	return out;
 }

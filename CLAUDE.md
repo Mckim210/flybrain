@@ -69,6 +69,8 @@
    - 강건성(`experiments/results/robust-w10/comparison.md`): weightScale 10으로 6개 기간 재실행 → 보유 82%→87%로 늘지만
      초파리 > 규칙 60/60, 잔차 −$0.01 [−$0.05, +$0.03] → 결론이 배율에 따라 바뀌지 않음.
    - **소논문용 숫자·출처 파일·재현 명령어는 `experiments/PAPER.md`에 모두 정리됨. 실험 단계는 마무리.**
+   - 코드 점검(2026-10-13, `experiments/audit-2026-10-13.js`, PAPER.md 끝): `lib/market.js`의 주문 크기는 STONKFLY 원본(min($10, 현금)/1.02)과 조금 다름
+     → 원본 규칙으로 재계산해도 손익 차이 ≤ 3센트, 결론 같음. `stats.meanCI`는 n과 무관하게 1.96 사용 → t분포로 바꿔도 0 포함 여부가 바뀐 구간 없음.
    - 그림: `experiments/results/figures/summary.png`(6개 기간 요약), `neurons-buy.png`(매수 결정 순간 뉴런 발화).
    가격 데이터는 `experiments/prices/`에 있음(출처·라이선스 `DATA_SOURCE.md`; 클라우드 세션은 외부 다운로드가 막힐 수 있으므로 이 파일을 쓸 것). 가격 → 자극 매핑(자산 A 수익률 → 왼쪽, 자산 B → 오른쪽)을 붙인다.
 6. 같은 조건을 수백 번 반복 → 선택 비율과 무작위(50:50)를 비교, 결과 CSV/JSON + 차트(HTML).

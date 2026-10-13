@@ -1,7 +1,10 @@
 /* market.js — prices, decision points and a STONKFLY-style paper portfolio
  *
- * Portfolio rules (our reading of the STONKFLY rules in CLAUDE.md; the exact
- * STONKFLY code may differ in details such as rounding):
+ * Portfolio rules (our reading of the STONKFLY rules in CLAUDE.md). The sizing
+ * differs from STONKFLY commit 78ef3e0 (stonkfly/risk.py plan(): buy
+ * min($10, cash) / 1.02, sell min(position, $10 / price), exchange minimum);
+ * re-pricing all saved decisions with that sizing moves P&L by at most a few
+ * cents and changes no conclusion (experiments/audit-2026-10-13.js):
  *   - start with `capital` USD cash, no BTC, no shorting
  *   - BUY : spend up to `orderUsd` on BTC; fee = feeRate x amount, paid in cash;
  *           cash may not drop below the reserve (reserveRate x starting capital)

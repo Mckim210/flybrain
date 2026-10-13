@@ -129,23 +129,27 @@ function shapeMetrics(r) {
 	return { kurtosis: excessKurtosis(r), acfR1: acf(r, 1), acfAbs1: acf(a, 1), acfAbs5: acf(a, 5), acfAbs10: acf(a, 10) };
 }
 
-/* all metrics of one run; logP covers P_0 .. P_{T+1}; runaway = |ln P_t - ln P_0| >= runawayLogMove at any t */
+/* all metrics of one run; logP covers P_0 .. P_{T+1} (drawdown and run-up include the starting price P_0).
+ * runaway = |ln P_t - ln P_0| >= runawayLogMove at any t; runawayDir = +1 / -1 for the side it first
+ * crossed (a market can swing back afterwards, so the final price is not a reliable direction), 0 if never. */
 function runMetrics(res, runawayLogMove) {
 	var r = res.returns, lp = res.logP;
-	var hi = -Infinity, lo = Infinity, mdd = 0, runup = 0, maxAbs = 0;
-	for (var t = 1; t < lp.length; t++) {
+	var hi = -Infinity, lo = Infinity, mdd = 0, runup = 0, maxAbs = 0, dir = 0;
+	for (var t = 0; t < lp.length; t++) {
 		if (lp[t] > hi) hi = lp[t];
 		if (lp[t] < lo) lo = lp[t];
 		mdd = Math.max(mdd, 1 - Math.exp(lp[t] - hi));
 		runup = Math.max(runup, Math.exp(lp[t] - lo) - 1);
+		var move = lp[t] - lp[0];
+		maxAbs = Math.max(maxAbs, Math.abs(move));
+		if (!dir && Math.abs(move) >= runawayLogMove) dir = move > 0 ? 1 : -1;
 	}
-	for (var t = 0; t < lp.length; t++) maxAbs = Math.max(maxAbs, Math.abs(lp[t] - lp[0]));
 	var m = shapeMetrics(r);
 	return {
 		volatility: sd(r), maxDrawdown: mdd, maxRunup: runup,
 		acfR1: m.acfR1, acfAbs1: m.acfAbs1, acfAbs5: m.acfAbs5, acfAbs10: m.acfAbs10, kurtosis: m.kurtosis,
 		maxRise: Math.max.apply(null, r), maxFall: Math.min.apply(null, r),
-		runaway: maxAbs >= runawayLogMove ? 1 : 0, maxAbsLogMove: maxAbs, finalLogPrice: lp[lp.length - 1]
+		runaway: maxAbs >= runawayLogMove ? 1 : 0, runawayDir: dir, maxAbsLogMove: maxAbs, finalLogPrice: lp[lp.length - 1]
 	};
 }
 
