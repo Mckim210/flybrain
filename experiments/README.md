@@ -63,7 +63,7 @@ node experiments/sweep.js --config experiments/config/dose-response.json --only-
 - 매핑 반전(오르면 오른쪽 눈, 같은 시드 6기간 × 10회, `results/reversed/comparison.md`):
   거래 방향이 규칙과 같은 비율 91% → 10%로 뒤집힘. 상승·하락 시간이 한쪽으로 쏠린 기간은 매수/매도 비율도 뒤집힘
   (예: 2026-07-31 매수 5%·매도 13% → 12%·5%). 하지만 손익은 반대 규칙 투자자(−$0.68 ~ −$2.40)와 비슷해지지 않고
-  0 근처(−$0.32 ~ +$0.16)에 머묾 — 78~88%를 보유해서 거래가 적기 때문. 같은 주문 수 무작위 대비 잔차 +$0.01 [−$0.03, +$0.06].
+  0 근처(−$0.32 ~ +$0.16)에 머묾 — 77~88%를 보유해서 거래가 적기 때문. 같은 주문 수 무작위 대비 잔차 +$0.01 [−$0.03, +$0.06].
 - 그림: `results/figures/summary.html`(.png) 6개 기간 요약, `results/figures/neurons-buy.html`(.png) 매수 결정 1회의 뉴런 지도.
 
 - 강건성(가중치 ×10, 같은 시드 6기간 × 10회, `results/robust-w10/comparison.md`): 보유 비율이 오르지만(82% → 87%)
@@ -101,18 +101,21 @@ node experiments/periods.js --only-table <같은 설정 파일들>   # 표만 �
 ## 초파리 투자자 vs 규칙 투자자 vs 무작위 투자자
 
 ```bash
-node experiments/trade.js --config experiments/config/trade-stonkfly-window.json
+node experiments/trade.js --config experiments/config/trade-stonkfly-window-fixed1pct.json
 # 초파리 실행은 그대로 두고 표·차트만 다시 만들기
-node experiments/trade.js --config experiments/config/trade-stonkfly-window.json --only-report
+node experiments/trade.js --config experiments/config/trade-stonkfly-window-fixed1pct.json --only-report
 ```
 
+> 기본으로 쓸 설정은 `trade-stonkfly-window-fixed1pct.json`(세기 기준 = 고정 1%)이다. 처음 실행한 `trade-stonkfly-window.json`은
+> 세기 기준으로 기간 전체의 최대 수익률(`"max"`)을 써서 미래 정보를 썼으므로 비교·기록용으로만 남겨 둔다.
+
 - 가격: `experiments/prices/btcusd_stonkfly_window_1min.csv` (출처·라이선스 `prices/DATA_SOURCE.md`). 1시간마다 결정(26회).
-- 자극: 직전 1시간 수익률이 오르면 왼쪽 눈, 내리면 오른쪽 눈(`VIS_R1R6`). 세기 = 1 × |수익률| / (이 기간 최대 |수익률|).
+- 자극: 직전 1시간 수익률이 오르면 왼쪽 눈, 내리면 오른쪽 눈(`VIS_R1R6`). 세기 = min(1, |수익률| / 1%)(고정 기준; 기록용 `"max"` 설정은 |수익률| / 기간 최대 |수익률|).
   판정: 왼쪽 = 매수, 오른쪽 = 매도, 무반응 = 보유. 결정마다 뇌를 초기화(기억 없음). 시드만 바꿔 30회 반복.
 - 포트폴리오 규칙(`lib/market.js`): 자본 $100, 주문당 최대 $10, 수수료 0.6%(매수는 현금에서, 매도는 대금에서),
   예비금 = 시작 자본의 2%, 하루(UTC) 최대 24건, 공매도 없음(가진 BTC가 없으면 매도 신호는 보유), 결정 분의 종가로 체결,
   최종 가치 = 현금 + BTC × 마지막 종가. STONKFLY 코드의 세부(반올림 등)와는 다를 수 있다.
-- 결과: `results/trade-stonkfly-window/` — `table.md`, `chart.html`(브라우저로 열기), `fly_runs.csv`, `decisions.csv`, `random_pnl.csv`, `summary.json`.
+- 결과: `results/trade-stonkfly-window-fixed1pct/`(기록용 "max" 실행은 `results/trade-stonkfly-window/`) — `table.md`, `chart.html`(브라우저로 열기), `fly_runs.csv`, `decisions.csv`, `random_pnl.csv`, `summary.json`.
 
 ## 한 시행의 구조
 

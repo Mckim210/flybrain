@@ -53,7 +53,7 @@
 - 결과 파일: `results/dose-response/table.md`, `results/dose-response-weights/table.md`, `results/dose-response-weights/baselines.md`
 - 명령어: `node experiments/sweep.js --config experiments/config/dose-response.json` (약 20분),
   `node experiments/sweep.js --config experiments/config/dose-response-weights.json` (약 35분),
-  `node experiments/compare-baselines.js experiments/results/dose-response experiments/results/dose-response-weights`
+  `node experiments/compare-baselines.js --out experiments/results/dose-response-weights/baselines.md experiments/results/dose-response experiments/results/dose-response-weights`
 - 해석: 기본 모델에서는 신호가 있지만 아주 약함(시냅스 가중치 최대 0.15, 평균 ≈ 0.0008, 문턱 1.0). 세기 1 이상은 감각뉴런이 포화돼 결과가 같음.
   가중치 ×40은 자극 없이도 뇌 전체 발화가 약 1.5배 → 제외.
 - 한계: 조건당 20회, 조건이 많아(다중비교) 개별 "신호 있음" 표시는 여러 세기에서 일관된지와 함께 봐야 함.
@@ -70,7 +70,7 @@
   (`runs/*/trials.csv`의 `lateralization_d`를 시드별로 빼서 평균).
 - 결과 파일: `results/confirm-w20-vis/table.md`, `results/confirm-w20-vis/runs/*/summary.json`, `results/confirm-w20-vis/baselines.md`
 - 명령어: `node experiments/sweep.js --config experiments/config/confirm-w20-vis.json` (약 15분),
-  `node experiments/compare-baselines.js experiments/results/confirm-w20-vis`
+  `node experiments/compare-baselines.js --out experiments/results/confirm-w20-vis/baselines.md experiments/results/confirm-w20-vis`
 - 한계: 가중치 ×20은 원래 FlyWire 연결 강도를 실험용으로 키운 것(웹 앱은 그대로). 27개 조건 중 고른 설정이라 새 시드로 다시 확인함.
 
 ## 4. 6개 기간 거래 실험 (수수료 0.6%)
@@ -85,15 +85,16 @@
 | 2026-08-18 | 횡보장 | −0.02% | −$0.10 [−$0.25 ~ +$0.00] (10) | 2.1 | −$1.52 (24) | −$0.87 | 10/10 | +$0.01 [−$0.02, +$0.04] |
 
 - 80회 합산 잔차: **−$0.01 [−$0.06, +$0.03]** → 초파리 손익은 거래 횟수로 설명됨(실력 증거 없음).
+  같은 기간의 실행끼리는 가격 경로를 공유해 독립이 아니므로, 기간을 단위로(기간 6개의 평균, t 자유도 5) 보면 **−$0.01 [−$0.08, +$0.06]** — 역시 0 포함.
 - 참고: STONKFLY 기간 첫 실행(세기 기준 "max" = 기간 최대 수익률, 미래 정보 사용)은 초파리 30회 평균 −$0.00, 74% 보유,
-  같은 행동 비율 무작위 집단 안 백분위 47%. 고정 1%로 바꾼 위 결과와 결론 같음(짝지은 차이 +$0.03 [−$0.03, +$0.09]).
+  같은 행동 비율 무작위 집단 안 백분위 47%. 고정 1%로 바꾼 위 결과와 결론 같음(짝지은 차이 +$0.03 [−$0.03, +$0.09], 30쌍 중 12쌍은 손익이 완전히 같음; `periods.js`가 `results/periods/summary.md`에 출력).
 - 기간 선택: 00:00 UTC에 시작하는 26시간 기간 638개 중 순수익률 10·25·50·75·90 백분위에 가장 가까운 기간(초파리 결과를 보기 전에 정함).
 - 결과 파일: `results/periods/summary.md`, `results/periods/selection.md`, 기간별 `results/periods/<id>/table.md`·`chart.html`,
   STONKFLY `results/trade-stonkfly-window-fixed1pct/`, 첫 실행 `results/trade-stonkfly-window/`
 - 명령어: `node experiments/select-periods.js` →
   `node experiments/periods.js experiments/config/trade-stonkfly-window.json experiments/config/trade-stonkfly-window-fixed1pct.json experiments/config/periods/*.json`
   (초파리 실행 약 75분 + 첫 실행 30회 약 60분; 표만: `--only-table` 추가)
-- 한계: 기간 6개(각 26시간)·2025-09 ~ 2026-09에 몰림, 결정마다 뇌 초기화(기억 없음), 유의한 기간 2개(−$0.13, +$0.05)는 부호가 반대로 우연 수준.
+- 한계: 기간 6개(각 26시간)·2025-09 ~ 2026-09에 몰림, 결정마다 뇌 초기화(기억 없음), 유의한 기간 2개(−$0.13, +$0.05)는 부호가 반대. 6개 기간이 서로 독립이고 모두 진짜 효과가 0이라면 2개 이상이 유의할 확률은 약 3%이므로, 우연이라기보다 기간마다 실제로 조금씩 다를 가능성이 있다(방향은 일정하지 않음).
   `btcusd_1h.csv`의 타임스탬프는 복원한 값(`prices/fix-1h-timestamps.js`, 1분봉과 대조해 일치 확인).
 
 ## 5. 수수료 반사실 — 결정은 그대로, 수수료만 바꿈
@@ -121,7 +122,7 @@
 | 2026-08-18 횡보장 | 13/13 | 5·7·88% → 7·8·85% | 90% → 15% | −$0.10 → −$0.16 | −$1.21 |
 
 - 거래 방향은 뒤집힘(규칙과 같은 방향 평균 91% → 10%). 손익은 반대 규칙 투자자와 비슷해지지 않고 0 근처(보유 77~88%).
-  반전 60회 합산 잔차 +$0.01 [−$0.03, +$0.06].
+  반전 60회 합산 잔차 +$0.01 [−$0.03, +$0.06], 기간 단위 +$0.01 [−$0.06, +$0.08].
 - 결과 파일: `results/reversed/comparison.md`, `results/reversed/summary.md`
 - 명령어: `node experiments/periods.js --out reversed experiments/config/reversed/stonkfly.json experiments/config/reversed/p2*.json` (약 100분),
   `node experiments/compare-mapping.js`
@@ -140,6 +141,7 @@
 
 - ✱ = 95% CI가 0을 포함하지 않음. 20배는 각 기간 반복 0~9만 사용(10배와 같은 시드).
 - 합계: 초파리 > 규칙 20배 60/60, 10배 60/60 · 잔차 20배 −$0.01 [−$0.05, +$0.04], 10배 −$0.01 [−$0.05, +$0.03]
+- 기간을 단위로 본 잔차(기간 6개의 평균): 20배 −$0.01 [−$0.08, +$0.06], 10배 −$0.01 [−$0.04, +$0.02] — 둘 다 0 포함.
 
 - 결론: 가중치를 ×20에서 ×10으로 낮추면 신호가 약해져 보유 비율이 오르고(기간 평균 82% → 87%, STONKFLY 75% → 85%) 주문이 줄지만,
   ① 초파리는 두 설정 모두 60/60회 규칙 투자자보다 낫고 ② 같은 주문 수 무작위 대비 잔차는 60회 합산 ×20 −$0.01 [−$0.05, +$0.04],
@@ -168,6 +170,10 @@
   (`null-model/stonkfly_random_traders.py`는 원본과 같음). 저장된 결정을 원본 규칙으로 다시 계산하면 손익이 기간마다 최대 3센트 바뀌고
   (예: STONKFLY 기간 규칙 투자자 −$1.10 → −$1.08), 초파리 > 규칙은 수수료 0.6% 80/80 → 80/80, 0.1% 63/80 → 63/80, 0% 45/80 → 46/80.
   → 결론은 같다. 소논문에는 "주문 크기는 원본과 약간 다르게 근사했고 영향은 몇 센트"라고 적을 것.
-- **작은 표본의 신뢰구간**: `lib/stats.js`의 95% CI는 n과 상관없이 1.96을 쓴다. 기간별 10회(t 기준 1.15배 넓어야 함)와
-  용량-반응 20회(1.07배)를 t분포로 다시 계산해도 0 포함 여부가 바뀐 구간은 없다(예: 2026-02-20 잔차 −$0.13 [−$0.24, −$0.03]).
+- **작은 표본의 신뢰구간**: 점검 당시 `lib/stats.js`의 95% CI는 n과 상관없이 1.96을 썼다(기간별 10회는 t 기준 약 1.15배 넓어야 함).
+  같은 날 t분포로 고치고 1부 결과를 다시 만들었으며, 0 포함 여부가 바뀐 구간은 없다(예: 2026-02-20 잔차 −$0.13 [−$0.24, −$0.03]).
+  용량-반응 표(`sweep.js`)는 처음부터 t분포였다. 시장 실험은 PLAN.md대로 1.96(`stats.meanCIz`)을 유지한다.
+- **기간 단위 신뢰구간**: 여러 기간을 합친 잔차는 같은 기간의 실행끼리 독립이 아니므로, 기간 평균을 단위로 한 구간도 함께 적었다(4·6·7절).
+- **저장된 실행 확인**: 거래 실험의 `fly/rep_*.json` 230개를 설정과 대조(결정 순서·시드·수익률·세기·눈)한 뒤 `runKey`를 기록함
+  (`node experiments/backfill-runkeys.js --check`). 이제 키가 없거나 다른 실행은 재사용하지 않는다.
 - 자세한 표와 재현: `results/audit-2026-10-13.md`, `node experiments/audit-2026-10-13.js` (약 10초, 뇌 시뮬레이션 없음).
