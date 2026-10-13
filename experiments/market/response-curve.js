@@ -53,6 +53,20 @@ function trialConfig(fly, cond) {
 	};
 }
 
+/* A saved condition file is reused only if it was made with the same condition,
+ * trial settings, number of trials and seeds as the script would use now;
+ * otherwise stop instead of silently mixing old and new trials. */
+function checkSaved(cond, file) {
+	var fly = JSON.parse(fs.readFileSync(TRADE_CONFIG, 'utf8')).fly;
+	var saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+	var ok = JSON.stringify(saved.condition) === JSON.stringify(cond) &&
+		JSON.stringify(saved.trialConfig) === JSON.stringify(trialConfig(fly, cond)) &&
+		saved.trials.length === TRIALS &&
+		saved.trials.every(function (t, i) { return t.seed === SEED + i; });
+	if (!ok) throw new Error(file + ' was made with different settings; delete it (or the runs folder) and run again');
+	return saved;
+}
+
 function worker(ids) {
 	var HeadlessBrain = require('../lib/headless-sim.js').HeadlessBrain;
 	var trial = require('../lib/choice-trial.js');
@@ -61,7 +75,7 @@ function worker(ids) {
 	var out = trial.prepareReadout(brain, fly.readout);
 	conditions().filter(function (c) { return ids.indexOf(c.id) >= 0; }).forEach(function (cond) {
 		var file = path.join(OUT, 'runs', cond.id + '.json');
-		if (fs.existsSync(file)) return;
+		if (fs.existsSync(file)) { checkSaved(cond, file); return; }
 		var tcfg = trialConfig(fly, cond);
 		var trials = [];
 		for (var i = 0; i < TRIALS; i++) {
@@ -77,7 +91,9 @@ function worker(ids) {
 function runMissing() {
 	fs.mkdirSync(path.join(OUT, 'runs'), { recursive: true });
 	var missing = conditions().filter(function (c) {
-		return !fs.existsSync(path.join(OUT, 'runs', c.id + '.json'));
+		var file = path.join(OUT, 'runs', c.id + '.json');
+		if (fs.existsSync(file)) { checkSaved(c, file); return false; }
+		return true;
 	}).map(function (c) { return c.id; });
 	if (!missing.length) return Promise.resolve();
 	var n = Math.min(os.cpus().length, missing.length);
@@ -100,7 +116,7 @@ function ci(k, n) { var w = stats.wilson(k, n); return pct(w[0]) + '~' + pct(w[1
 function report() {
 	var runs = {};
 	conditions().forEach(function (c) {
-		runs[c.id] = JSON.parse(fs.readFileSync(path.join(OUT, 'runs', c.id + '.json'), 'utf8'));
+		runs[c.id] = checkSaved(c, path.join(OUT, 'runs', c.id + '.json'));
 	});
 	var csv = ['condition,side,intensity,trial,seed,choice,reason,d,spikes_left,spikes_right,total_spikes'];
 	conditions().forEach(function (c) {

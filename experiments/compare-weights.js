@@ -55,7 +55,7 @@ function main() {
 	md.push('| 기간 | 구분 | 규칙 투자자 | 초파리 평균 손익: 20배 → 10배 | ① 초파리 > 규칙: 20배 / 10배 | ② 잔차 [95% CI]: 20배 | ② 잔차 [95% CI]: 10배 | ③ 보유 비율: 20배 → 10배 | 주문 수: 20배 → 10배 |');
 	md.push('|---|---|---:|---|---|---|---|---|---|');
 	var csv = ['period,label,rule_pnl,w20_pnl_mean,w10_pnl_mean,w20_beats_rule,w10_beats_rule,w20_residual,w20_res_lo,w20_res_hi,w10_residual,w10_res_lo,w10_res_hi,w20_hold,w10_hold,w20_orders,w10_orders'];
-	var pooled = { 20: [], 10: [] }, beats = { 20: 0, 10: 0 }, total = 0;
+	var pooled = { 20: [], 10: [] }, perPeriod = { 20: [], 10: [] }, beats = { 20: 0, 10: 0 }, total = 0;
 	PAIRS.forEach(function (p) {
 		var a = load(p[1], n), b = load(p[2], n);
 		if (a.weightScale !== 20 || b.weightScale !== 10) throw new Error('unexpected weightScale in ' + p[0]);
@@ -68,6 +68,7 @@ function main() {
 			a.hold.toFixed(4), b.hold.toFixed(4), a.orders.toFixed(2), b.orders.toFixed(2)].join(','));
 		a.runs.forEach(function (r) { pooled[20].push(r.residual); });
 		b.runs.forEach(function (r) { pooled[10].push(r.residual); });
+		perPeriod[20].push(a.residual.mean); perPeriod[10].push(b.residual.mean);
 		beats[20] += a.beats; beats[10] += b.beats; total += a.runs.length;
 	});
 	var p20 = stats.meanCI(pooled[20]), p10 = stats.meanCI(pooled[10]);
@@ -75,6 +76,9 @@ function main() {
 	md.push('- ✱ = 95% CI가 0을 포함하지 않음. 20배는 각 기간 반복 0~' + (n - 1) + '만 사용(10배와 같은 시드).');
 	md.push('- 합계: 초파리 > 규칙 20배 ' + beats[20] + '/' + total + ', 10배 ' + beats[10] + '/' + total +
 		' · 잔차 20배 ' + money(p20.mean) + ' [' + money(p20.lo) + ', ' + money(p20.hi) + '], 10배 ' + money(p10.mean) + ' [' + money(p10.lo) + ', ' + money(p10.hi) + ']');
+	var q20 = stats.meanCI(perPeriod[20]), q10 = stats.meanCI(perPeriod[10]);
+	md.push('- 기간을 단위로 본 잔차(기간 ' + q20.n + '개의 평균, 같은 기간의 실행끼리는 독립이 아니므로 더 보수적): 20배 ' +
+		money(q20.mean) + ' [' + money(q20.lo) + ', ' + money(q20.hi) + '], 10배 ' + money(q10.mean) + ' [' + money(q10.lo) + ', ' + money(q10.hi) + ']');
 	var out = path.join(R, 'robust-w10');
 	fs.writeFileSync(path.join(out, 'comparison.md'), md.join('\n') + '\n');
 	fs.writeFileSync(path.join(out, 'comparison.csv'), csv.join('\n') + '\n');

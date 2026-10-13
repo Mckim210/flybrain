@@ -9,8 +9,8 @@
  *    rejecting orders below the exchange minimum (taken as $1, as in
  *    null-model/stonkfly_random_traders.py). The saved fly decisions and the rule
  *    investor are re-priced both ways, at fees 0.6% / 0.1% / 0%.
- * 2. Small-sample CIs. lib/stats.js meanCI uses 1.96 for every n. The CIs that
- *    decide a conclusion with n = 10 or 20 are recomputed with Student's t.
+ * 2. Small-sample CIs (record only). At the time meanCI used 1.96 for every n;
+ *    it now uses Student's t (commit 04ba35e), so this section is not recomputed.
  * Writes experiments/results/audit-2026-10-13.md
  */
 'use strict';
@@ -22,8 +22,6 @@ var common = require('./lib/trade-common.js');
 
 var FEES = [0.006, 0.001, 0];
 var MIN_ORDER_USD = 1;
-// two-sided 95% Student t quantiles for the degrees of freedom used below
-var T975 = { 9: 2.262, 19: 2.093 };
 
 function money(x) { return (x >= 0 ? '+$' : '−$') + Math.abs(x).toFixed(3); }
 function mean(xs) { return xs.reduce(function (a, b) { return a + b; }, 0) / xs.length; }
@@ -98,34 +96,16 @@ function sizing() {
 	return md;
 }
 
+/* Section 2 is a record only. When this audit ran, meanCI used 1.96 for every n;
+ * commit 04ba35e switched it to Student's t and regenerated the results, so
+ * recomputing "1.96 -> t" now would widen intervals that are already t-based. */
 function smallSample() {
-	var md = ['## 2. 작은 표본의 95% 신뢰구간: 1.96 대신 t분포', '',
-		'`lib/stats.js`의 `meanCI`는 표본 수와 상관없이 평균 ± 1.96 × 표준오차를 쓴다. n이 작으면 t분포보다 좁다',
-		'(n = 10이면 2.262/1.96 = 1.15배, n = 20이면 1.07배). 결론에 쓰인 구간만 t분포로 다시 계산함(시장 실험은 PLAN.md가 1.96을 미리 정했으므로 그대로 둠).', '',
-		'| 결과 | n | 현재 [95% CI] | t분포 [95% CI] | 0을 포함? 현재 → t |', '|---|---:|---|---|---|'];
-	function row(label, n, m, lo, hi) {
-		var f = T975[n - 1] / 1.959963984540054, h = (hi - lo) / 2 * f;
-		function inc(a, b) { return a <= 0 && b >= 0 ? '포함' : '제외'; }
-		md.push('| ' + label + ' | ' + n + ' | ' + m.toFixed(4) + ' [' + lo.toFixed(4) + ', ' + hi.toFixed(4) + '] | ' +
-			m.toFixed(4) + ' [' + (m - h).toFixed(4) + ', ' + (m + h).toFixed(4) + '] | ' + inc(lo, hi) + ' → ' + inc(m - h, m + h) + ' |');
-	}
-	['periods', 'robust-w10'].forEach(function (dir) {
-		fs.readdirSync(path.join(__dirname, 'results', dir)).filter(function (d) { return /^p\d{8}$/.test(d); }).sort().forEach(function (d) {
-			var r = JSON.parse(fs.readFileSync(path.join(__dirname, 'results', dir, d, 'summary.json'), 'utf8')).fly.residualVsSameOrders;
-			if (r.n === 10) row(dir + '/' + d + ' 같은 주문 수 대비 잔차($)', r.n, r.mean, r.lo, r.hi);
-		});
-	});
-	['dose-response', 'dose-response-weights'].forEach(function (dir) {
-		var lines = fs.readFileSync(path.join(__dirname, 'results', dir, 'table.csv'), 'utf8').trim().split('\n');
-		var h = lines[0].split(',');
-		var n = JSON.parse(fs.readFileSync(path.join(__dirname, 'config', dir + '.json'), 'utf8')).trials;
-		lines.slice(1).forEach(function (l) {
-			var c = l.split(','), g = function (k) { return c[h.indexOf(k)]; };
-			if (+g('delta_lo95') === 0 && +g('delta_hi95') === 0) return;
-			row(dir + ' ×' + g('weight_scale') + ' ' + g('group') + ' 세기 ' + g('intensity') + ' Δd', n, +g('delta_d'), +g('delta_lo95'), +g('delta_hi95'));
-		});
-	});
-	return md;
+	return ['## 2. 작은 표본의 95% 신뢰구간 (기록)', '',
+		'- 점검 당시 `lib/stats.js`의 `meanCI`는 표본 수와 관계없이 1.96을 써서, 10회짜리 결과의 구간이 t분포보다 약 15% 좁았다.',
+		'- 같은 날 다른 세션의 수정(커밋 04ba35e)으로 `meanCI`가 t분포를 쓰게 되었고 1부 결과를 다시 만들었다. 0을 포함하는지가 바뀐 구간은 없었다.',
+		'- 용량-반응 표(`sweep.js`)의 Δd 구간은 처음(커밋 afde606)부터 t분포였으므로 고칠 것이 없었다.',
+		'- 시장 실험은 PLAN.md가 1.96을 미리 정했으므로 `stats.meanCIz`(1.96)를 그대로 쓴다.',
+		'- 이 절의 원래 비교표(1.96 → t)는 커밋 f3334a1의 이 파일에 남아 있다. 지금 다시 계산하면 이미 t분포인 구간을 한 번 더 넓히게 되므로 다시 계산하지 않는다.'];
 }
 
 function main() {

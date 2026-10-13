@@ -1,5 +1,6 @@
 {
  "repeat": 6,
+ "runKey": "{\"prices\":\"experiments/prices/btcusd_1h.csv\",\"window\":{\"start\":\"2026-07-31T00:00:00.000Z\",\"hours\":26},\"intervalMin\":60,\"fly\":{\"fullScaleReturn\":0.01,\"mapping\":\"reversed\",\"maxIntensity\":1,\"noise\":{\"rate\":0.005,\"amplitude\":1},\"readout\":{\"superClass\":\"descending\",\"minSpikes\":10,\"margin\":0.2},\"seed\":700000,\"stimulusGroups\":[\"VIS_R1R6\"],\"warmupTicks\":20,\"weightScale\":20,\"windowTicks\":50}}",
  "decisions": [
   {
    "decision": 0,

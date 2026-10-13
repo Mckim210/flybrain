@@ -89,12 +89,16 @@ function repFile(cfg, k) {
 	return path.join(__dirname, '..', 'results', cfg.name, 'fly', 'rep_' + String(k).padStart(2, '0') + '.json');
 }
 
-/* Saved fly run k for this config. Runs saved before run keys existed have no
- * key and are accepted as they are. */
+/* Saved fly run k for this config. Every saved run carries the run key of the
+ * config that made it (runs saved before keys existed were checked and keyed by
+ * backfill-runkeys.js), so a run without a key or with a different key is refused. */
 function readRep(cfg, k) {
 	var file = repFile(cfg, k);
 	var rep = JSON.parse(fs.readFileSync(file, 'utf8'));
-	if (rep.runKey !== undefined && rep.runKey !== runKey(cfg)) {
+	if (rep.runKey === undefined) {
+		throw new Error(file + ' has no run key; run node experiments/backfill-runkeys.js to check it against ' + cfg.name);
+	}
+	if (rep.runKey !== runKey(cfg)) {
 		throw new Error(file + ' was made with different settings than ' + cfg.name +
 			' now has; delete the results folder or use a new name');
 	}

@@ -106,7 +106,7 @@ function table(cfgs, outName) {
 	md.push('| 기간 | 구분 | 순수익률 | 초파리 손익 평균 [최저~최고] | 초파리 주문 | 규칙 투자자 손익 (주문) | 무작위 1만 명 평균 | 초파리 백분위: 무작위 / 같은 행동 비율 | 초파리 > 규칙 | 같은 주문 수 대비 잔차 [95% CI] | 초파리−규칙 손익 vs 수수료 차이 |');
 	md.push('|---|---|---:|---|---:|---|---:|---|---:|---|---|');
 	var csv = ['period,label,start_utc,end_utc,net_return,fly_repeats,fly_pnl_mean,fly_pnl_min,fly_pnl_max,fly_orders_mean,fly_fees_mean,rule_pnl,rule_orders,rule_fees,random_pnl_mean,fly_pctl_random,fly_pctl_matched,fly_beats_rule,residual_mean,residual_lo95,residual_hi95,fly_minus_rule_pnl,rule_minus_fly_fees'];
-	var allResiduals = [];
+	var allResiduals = [], periodMeans = [];
 	rows.forEach(function (r) {
 		var s = r.s, f = s.fly, w = s.window;
 		var label = r.cfg.label || 'STONKFLY 기간';
@@ -116,7 +116,10 @@ function table(cfgs, outName) {
 		var res = f.residualVsSameOrders;
 		var lookahead = r.cfg.fly.fullScaleReturn === 'max';
 		if (lookahead) label = (label ? label + ' ' : '') + '(참고: 이전 "max" 기준, 미래 정보 사용 — 합계에서 제외)';
-		else r.runs.forEach(function (x) { allResiduals.push(x.residual); });
+		else {
+			r.runs.forEach(function (x) { allResiduals.push(x.residual); });
+			periodMeans.push(r.runs.reduce(function (t, x) { return t + x.residual; }, 0) / r.runs.length);
+		}
 		md.push('| ' + w.from.slice(0, 16).replace('T', ' ') + ' ~ ' + w.to.slice(5, 16).replace('T', ' ') + ' | ' + label + ' | ' + pct(net) + ' | ' +
 			money(f.pnl.mean) + ' [' + money(f.pnl.min) + ' ~ ' + money(f.pnl.max) + '] (' + f.pnl.n + '회) | ' + f.ordersMean.toFixed(1) + ' | ' +
 			money(s.rule.pnl) + ' (' + s.rule.orders + ') | ' + money(s.random.pnl.mean) + ' | ' +
@@ -132,6 +135,23 @@ function table(cfgs, outName) {
 	md.push('');
 	md.push('- 모든 기간(미래 정보를 쓰지 않는 설정)의 초파리 실행 ' + pooled.n + '회를 합친 잔차(같은 주문 수 무작위 대비): ' + money(pooled.mean) +
 		' (95% CI ' + money(pooled.lo) + ' ~ ' + money(pooled.hi) + ')');
+	// Runs within one period share the same price path, so they are not independent. Treating the
+	// period as the unit (one mean per period, t with periods − 1 df) gives the more honest interval.
+	var byPeriod = stats.meanCI(periodMeans);
+	md.push('- 기간을 단위로 본 잔차(기간 ' + byPeriod.n + '개의 평균을 다시 평균, 같은 기간의 실행끼리는 독립이 아니므로 이쪽이 더 보수적): ' +
+		money(byPeriod.mean) + ' (95% CI ' + money(byPeriod.lo) + ' ~ ' + money(byPeriod.hi) + ')');
+	// Look-ahead ("max") run vs the fixed-scale run of the same window: same seeds, so pair them run by run.
+	rows.forEach(function (la) {
+		if (la.cfg.fly.fullScaleReturn !== 'max') return;
+		rows.forEach(function (fx) {
+			if (fx === la || fx.cfg.fly.fullScaleReturn === 'max' || fx.s.window.from !== la.s.window.from ||
+				fx.cfg.fly.seed !== la.cfg.fly.seed || fx.runs.length !== la.runs.length) return;
+			var diffs = fx.runs.map(function (x, i) { return x.pnl - la.runs[i].pnl; });
+			var dd = stats.meanCI(diffs), same = diffs.filter(function (x) { return x === 0; }).length;
+			md.push('- 같은 기간·같은 시드의 짝지은 손익 차이(고정 기준 − 미래 정보 "max" 기준, ' + dd.n + '쌍): ' + money(dd.mean) +
+				' (95% CI ' + money(dd.lo) + ' ~ ' + money(dd.hi) + '), 손익이 완전히 같은 쌍 ' + same + '개');
+		});
+	});
 	var out = path.join(__dirname, 'results', outName);
 	fs.mkdirSync(out, { recursive: true });
 	fs.writeFileSync(path.join(out, 'summary.md'), md.join('\n') + '\n');

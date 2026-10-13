@@ -15,6 +15,10 @@ function esc(s) {
 }
 
 function renderChart(summary, flyRuns, randPnl) {
+	// Labels come from the run's own config so a weightScale-10 or hourly-data run is not described as 20× / 1-minute.
+	var cfg = summary.config || {}, rules = cfg.rules || { capital: 100, orderUsd: 10, feeRate: 0.006, reserveRate: 0.02 };
+	var weightScale = (cfg.fly && cfg.fly.weightScale) || 1;
+	var barLabel = /1h/.test(cfg.prices || '') ? '1시간봉' : /1min/.test(cfg.prices || '') ? '1분봉' : '가격 자료';
 	var data = {
 		random: randPnl.map(function (x) { return Math.round(x * 10000) / 10000; }),
 		fly: flyRuns,
@@ -68,8 +72,9 @@ function renderChart(summary, flyRuns, randPnl) {
 'details { margin-top: 8px; } summary { cursor: pointer; color: var(--text-2); font-size: 14px; }\n' +
 '</style>\n</head>\n<body>\n<main>\n' +
 '<h1>초파리 트레이더의 최종 손익</h1>\n' +
-'<p class="sub">BTC/USD (Bitstamp 1분봉), ' + esc(s.window.from.slice(0, 16).replace('T', ' ')) + ' ~ ' +
-	esc(s.window.to.slice(0, 16).replace('T', ' ')) + ' UTC · 1시간마다 결정 ' + s.window.decisions + '회 · 자본 $100, 주문당 최대 $10, 수수료 0.6%, 예비금 2%</p>\n' +
+'<p class="sub">BTC/USD (Bitstamp ' + esc(barLabel) + '), ' + esc(s.window.from.slice(0, 16).replace('T', ' ')) + ' ~ ' +
+	esc(s.window.to.slice(0, 16).replace('T', ' ')) + ' UTC · 1시간마다 결정 ' + s.window.decisions + '회 · 자본 $' + rules.capital + ', 주문당 최대 $' + rules.orderUsd +
+	', 수수료 ' + (100 * rules.feeRate).toFixed(1) + '%, 예비금 ' + (100 * rules.reserveRate).toFixed(0) + '%</p>\n' +
 '<h2>최종 손익 분포</h2>\n' +
 '<p class="note">막대: 무작위 투자자 1만 명 중 그 손익 구간에 든 비율 · 점: 초파리 ' + flyRuns.length + '회(시드만 다름) · 선: 규칙 투자자(오르면 매수, 내리면 매도)</p>\n' +
 '<div class="legend"><span><span class="key fly"></span>(1) 초파리 ' + flyRuns.length + '회</span><span><span class="key rule"></span>(2) 규칙 투자자</span>' +
@@ -88,7 +93,7 @@ function renderChart(summary, flyRuns, randPnl) {
 '<div class="chart" id="c2"><div class="tip"></div></div>\n' +
 '<details><summary>결정 시점별 표 보기</summary><div class="table-wrap"><table><thead><tr><th>#</th><th>시각 (UTC)</th><th>수익률</th><th>자극</th><th>규칙</th>' +
 	'<th>초파리 매수</th><th>매도</th><th>보유</th><th>규칙과 같음</th></tr></thead><tbody>\n' + decisionRows + '\n</tbody></table></div></details>\n' +
-'<p class="note" style="margin-top:24px">한계: 시냅스 가중치 20배(실험용 설정), 매 결정마다 뇌를 초기화(기억 없음), 결과 변동은 배경 잡음에서만 나옴. ' +
+'<p class="note" style="margin-top:24px">한계: 시냅스 가중치 ' + esc(String(weightScale)) + '배(실험용 설정), 매 결정마다 뇌를 초기화(기억 없음), 결과 변동은 배경 잡음에서만 나옴. ' +
 	'가격은 Bitstamp BTC/USD(STONKFLY는 Coinbase BTC-USDC 사용) — 데이터: ff137/bitstamp-btcusd-minute-data, CC BY-SA 4.0.</p>\n' +
 '</main>\n' +
 '<script>\nvar DATA = ' + JSON.stringify(data) + ';\n' + CLIENT_JS + '\n</script>\n</body>\n</html>\n';
