@@ -63,6 +63,9 @@ function runPool(jobs, concurrency) {
 	});
 }
 
+/* CSV field: quote text that contains a comma, quote or newline */
+function cell(v) { var t = String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }
+
 function money(x) { return (x >= 0 ? '+$' : '−$') + Math.abs(x).toFixed(2); }
 function pct(x) { return (x >= 0 ? '+' : '') + (100 * x).toFixed(2) + '%'; }
 
@@ -120,7 +123,7 @@ function table(cfgs, outName) {
 			(100 * f.percentileInRandomMean).toFixed(0) + '% / ' + (100 * f.percentileInMatchedRandomMean).toFixed(0) + '% | ' +
 			f.beatsRule + '/' + f.pnl.n + ' | ' + money(res.mean) + ' [' + money(res.lo) + ', ' + money(res.hi) + '] | ' +
 			money(diff) + ' vs ' + money(feeDiff) + ' |');
-		csv.push([r.cfg.name, label, w.from, w.to, net.toFixed(5), f.pnl.n, f.pnl.mean.toFixed(4), f.pnl.min.toFixed(4), f.pnl.max.toFixed(4),
+		csv.push([r.cfg.name, cell(label), w.from, w.to, net.toFixed(5), f.pnl.n, f.pnl.mean.toFixed(4), f.pnl.min.toFixed(4), f.pnl.max.toFixed(4),
 			f.ordersMean.toFixed(2), feesFly.toFixed(4), s.rule.pnl.toFixed(4), s.rule.orders, s.rule.fees.toFixed(4), s.random.pnl.mean.toFixed(4),
 			f.percentileInRandomMean.toFixed(4), f.percentileInMatchedRandomMean.toFixed(4), f.beatsRule, res.mean.toFixed(4), res.lo.toFixed(4),
 			res.hi.toFixed(4), diff.toFixed(4), feeDiff.toFixed(4)].join(','));

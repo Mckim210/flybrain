@@ -146,9 +146,13 @@ HeadlessBrain.prototype.select = function (filter) {
 	return out;
 };
 
-/* Clear all voltages, spikes and inputs (same as the app's 'reset' message). */
+/* Clear all voltages, spikes, inputs and parameter overrides. */
 HeadlessBrain.prototype.reset = function () {
 	this._post({ data: { type: 'reset' } });
+	// the worker's reset keeps leak/threshold/refractory; restore its defaults so a
+	// trial never inherits parameters set by an earlier trial
+	var c = this._ctx;
+	this._post({ data: { type: 'setParams', leakRate: c.DEFAULT_LEAK_RATE, threshold: c.DEFAULT_THRESHOLD, refractoryPeriod: c.DEFAULT_REFRACTORY_PERIOD } });
 	this._stim = null;
 	this._noise = null;
 	this._messages.length = 0;

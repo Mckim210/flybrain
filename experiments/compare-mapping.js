@@ -37,7 +37,7 @@ function load(cfgFile, n) {
 	var cfg = common.loadTradeConfig(path.join(__dirname, 'config', cfgFile));
 	var acts = [];
 	for (var k = 0; k < n; k++) {
-		var rep = JSON.parse(fs.readFileSync(path.join(__dirname, 'results', cfg.name, 'fly', 'rep_' + String(k).padStart(2, '0') + '.json'), 'utf8'));
+		var rep = common.readRep(cfg, k);
 		acts.push(rep.decisions.map(function (d) { return d.action; }));
 	}
 	return { cfg: cfg, acts: acts };

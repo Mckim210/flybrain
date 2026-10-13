@@ -112,7 +112,7 @@ function report(cfg, outDir, flyDir) {
 	/* (1) fly investor */
 	var flyRuns = [];
 	for (var k = 0; k < cfg.fly.repeats; k++) {
-		var rep = JSON.parse(fs.readFileSync(path.join(flyDir, 'rep_' + String(k).padStart(2, '0') + '.json'), 'utf8'));
+		var rep = common.readRep(cfg, k);
 		var acts = rep.decisions.map(function (d) { return d.action; });
 		var sim = market.simulate(acts, points, finalPrice, R);
 		var agree = acts.filter(function (a, j) { return a === ruleAct[j]; }).length;

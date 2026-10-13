@@ -36,13 +36,12 @@ function main() {
 	var prices = common.loadPrices(cfg);
 	var points = market.decisionPoints(prices, cfg.intervalMin);
 	var fullScale = common.fullScaleReturn(cfg, points);
-	var flyDir = path.join(__dirname, 'results', cfg.name, 'fly');
 
 	var j = a.decision !== undefined ? +a.decision : points.reduce(function (best, p, i) { return p.ret > points[best].ret ? i : best; }, 0);
 	var k = a.repeat !== undefined ? +a.repeat : -1, saved = null;
 	for (var r = 0; r < cfg.fly.repeats; r++) {
 		if (k >= 0 && r !== k) continue;
-		var rep = JSON.parse(fs.readFileSync(path.join(flyDir, 'rep_' + String(r).padStart(2, '0') + '.json'), 'utf8'));
+		var rep = common.readRep(cfg, r);
 		if (k >= 0 || rep.decisions[j].action === 'buy') { k = r; saved = rep.decisions[j]; break; }
 	}
 	if (!saved) throw new Error('no repeat chose buy at decision ' + j);
@@ -100,7 +99,7 @@ function main() {
 
 var GROUP_KO = {
 	VIS_R1R6: '광수용체 R1–R6', VIS_ME: '시각 수질(medulla)', VIS_LO: '시각 소엽(lobula)', VIS_LPTC: '시각 소엽판 LPTC',
-	GENERIC_CENTRAL: '중앙 뇌(기타)', MB_KC: '버섯체 케년세포', GNG_DESC: '식도하 신경절 하행', CX_PFN: '중심체 PFN',
+	GENERIC_CENTRAL: '중앙 뇌(기타)', MB_KC: '버섯체 케년세포', GNG_DESC: 'GNG(gnathal ganglia) 하행', CX_PFN: '중심체 PFN',
 	OLF_ORN_FOOD: '먹이 냄새 수용체', MECH_BRISTLE: '기계감각 강모', MECH_JO: '존스턴 기관'
 };
 

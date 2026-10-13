@@ -1,6 +1,6 @@
 {
   "config": {
-    "_comment": "STONKFLY '$1 이익' 기간(2026-09-10 11:34 ~ 09-11 14:14 UTC, Bitstamp 1분봉)에 1시간마다 한 번 결정. 채택 설정(weightScale 20, VIS_R1R6, 최대 세기 1). 오르면 왼쪽 눈, 내리면 오른쪽 눈. 왼쪽 선택 = 매수, 오른쪽 = 매도, 무반응 = 보유.",
+    "_comment": "STONKFLY '$1 이익' 기간(2026-09-10 11:34 ~ 09-11 14:14 UTC, Bitstamp 1분봉)에 1시간마다 한 번 결정. 채택 설정(weightScale 20, VIS_R1R6, 최대 세기 1). 오르면 왼쪽 눈, 내리면 오른쪽 눈. 왼쪽 선택 = 매수, 오른쪽 = 매도, 무반응 = 보유. 주의: fullScaleReturn \"max\"는 기간 전체의 최대 수익률을 써서 미래 정보를 씀(look-ahead) — 재현용으로만 유지, 새 실험은 trade-stonkfly-window-fixed1pct.json 사용.",
     "name": "trade-stonkfly-window",
     "prices": "experiments/prices/btcusd_stonkfly_window_1min.csv",
     "intervalMin": 60,
@@ -84,8 +84,8 @@
     "residualVsSameOrders": {
       "n": 30,
       "mean": -0.042987601480580104,
-      "lo": -0.15502909338039128,
-      "hi": 0.06905389041923109
+      "lo": -0.1598950418127829,
+      "hi": 0.0739198388516227
     },
     "ordersPnlCorrelation": 0.08966287989730815,
     "beatsRule": 30,

@@ -32,7 +32,15 @@ function wilson(k, n) {
 	return [Math.max(0, center - half), Math.min(1, center + half)];
 }
 
-/* Mean and 95% CI (normal approximation) of a list of numbers. */
+/* Two-sided 95% critical value of Student's t with df degrees of freedom
+ * (Cornish-Fisher expansion; within 0.2% of the exact value for df >= 9). */
+function tCrit95(df) {
+	var z = 1.959963984540054;
+	return z + (z * z * z + z) / (4 * df) + (5 * Math.pow(z, 5) + 16 * Math.pow(z, 3) + 3 * z) / (96 * df * df);
+}
+
+/* Mean and 95% CI of a list of numbers. Uses Student's t (n - 1 degrees of
+ * freedom), not 1.96: with 10 runs the interval is ~15% wider than a normal one. */
 function meanCI(xs) {
 	var n = xs.length;
 	if (n === 0) return { n: 0, mean: null, lo: null, hi: null };
@@ -43,7 +51,8 @@ function meanCI(xs) {
 	var v = 0;
 	for (var i = 0; i < n; i++) v += (xs[i] - m) * (xs[i] - m);
 	var se = Math.sqrt(v / (n - 1) / n);
-	return { n: n, mean: m, lo: m - 1.96 * se, hi: m + 1.96 * se };
+	var half = tCrit95(n - 1) * se;
+	return { n: n, mean: m, lo: m - half, hi: m + half };
 }
 
-module.exports = { binomTwoSided: binomTwoSided, wilson: wilson, meanCI: meanCI };
+module.exports = { binomTwoSided: binomTwoSided, wilson: wilson, meanCI: meanCI, tCrit95: tCrit95 };
