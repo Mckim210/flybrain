@@ -1,0 +1,369 @@
+{
+  "configs": [
+    "trade-stonkfly-window-fixed1pct.json",
+    "periods/p20250910.json",
+    "periods/p20260220.json",
+    "periods/p20260526.json",
+    "periods/p20260731.json",
+    "periods/p20260818.json"
+  ],
+  "fees": [
+    0.006,
+    0
+  ],
+  "skipInvestors": 10000,
+  "summary": [
+    {
+      "fee": 0.006,
+      "flyMinusRuleMean": 1.1149354773963924,
+      "flyBeatsRulePeriods": 6,
+      "residualPooled": {
+        "n": 80,
+        "mean": -0.008411037412806239,
+        "lo": -0.0523800539179187,
+        "hi": 0.03555797909230623
+      },
+      "residualPeriodUnit": {
+        "n": 6,
+        "mean": -0.00019651801383018438,
+        "lo": -0.05035640867795721,
+        "hi": 0.049963372650296836
+      },
+      "flyMinusThresholdPeriodUnit": {
+        "n": 6,
+        "mean": 0.02445999787839881,
+        "lo": -0.10904628125720325,
+        "hi": 0.15796627701400087
+      },
+      "flyBeatsThresholdPeriods": 3,
+      "periods": 6
+    },
+    {
+      "fee": 0,
+      "flyMinusRuleMean": -0.05264104412721913,
+      "flyBeatsRulePeriods": 4,
+      "residualPooled": {
+        "n": 80,
+        "mean": -0.0066843986061412425,
+        "lo": -0.05051681723711951,
+        "hi": 0.037148020024837025
+      },
+      "residualPeriodUnit": {
+        "n": 6,
+        "mean": 0.002030288296969117,
+        "lo": -0.047890457767811465,
+        "hi": 0.05195103436174969
+      },
+      "flyMinusThresholdPeriodUnit": {
+        "n": 6,
+        "mean": 0.026908396813995154,
+        "lo": -0.10699023313484096,
+        "hi": 0.16080702676283126
+      },
+      "flyBeatsThresholdPeriods": 4,
+      "periods": 6
+    }
+  ],
+  "rows": [
+    {
+      "period": "2026-09-10",
+      "label": "STONKFLY 기간",
+      "fee": 0.006,
+      "repeats": 30,
+      "q": 0.23846153846153847,
+      "flyMean": 0.030737377022256852,
+      "flyOrders": 4.033333333333333,
+      "rule": -1.1012466468672812,
+      "ruleOrders": 22,
+      "skipMean": 0.04884130789927333,
+      "skipOrders": 4.3017,
+      "residualCI": {
+        "n": 30,
+        "mean": -0.03305459560973443,
+        "lo": -0.14352980426908216,
+        "hi": 0.07742061304961328
+      },
+      "percentileInSkip": 0.4857483333333333,
+      "threshold": 0.004995970280461615,
+      "thresholdPnl": 0.15496300960352016,
+      "thresholdOrders": 4,
+      "flyMinusRule": 1.131984023889538,
+      "flyMinusThreshold": -0.12422563258126332
+    },
+    {
+      "period": "2025-09-10",
+      "label": "상승장",
+      "fee": 0.006,
+      "repeats": 10,
+      "q": 0.15384615384615385,
+      "flyMean": 0.02299802998293927,
+      "flyOrders": 3.6,
+      "rule": -0.6381413792009596,
+      "ruleOrders": 26,
+      "skipMean": -0.009533327966585127,
+      "skipOrders": 3.4391,
+      "residualCI": {
+        "n": 10,
+        "mean": 0.027694241435539703,
+        "lo": -0.07478196159370593,
+        "hi": 0.13017044446478535
+      },
+      "percentileInSkip": 0.5764900000000001,
+      "threshold": 0.003449611355796245,
+      "thresholdPnl": 0.11891678560584751,
+      "thresholdOrders": 4,
+      "flyMinusRule": 0.6611394091838989,
+      "flyMinusThreshold": -0.09591875562290823
+    },
+    {
+      "period": "2026-02-20",
+      "label": "상승장",
+      "fee": 0.006,
+      "repeats": 10,
+      "q": 0.21923076923076923,
+      "flyMean": -0.30838747621680795,
+      "flyOrders": 4.7,
+      "rule": -1.6124511800331618,
+      "ruleOrders": 26,
+      "skipMean": -0.2358615726950317,
+      "skipOrders": 4.9522,
+      "residualCI": {
+        "n": 10,
+        "mean": -0.08454464129778261,
+        "lo": -0.17276602058790447,
+        "hi": 0.003676737992339252
+      },
+      "percentileInSkip": 0.40310499999999994,
+      "threshold": 0.004981577008106086,
+      "thresholdPnl": -0.5132870440931327,
+      "thresholdOrders": 5,
+      "flyMinusRule": 1.3040637038163538,
+      "flyMinusThreshold": 0.2048995678763248
+    },
+    {
+      "period": "2026-05-26",
+      "label": "하락장",
+      "fee": 0.006,
+      "repeats": 10,
+      "q": 0.16538461538461538,
+      "flyMean": -0.18495150913550304,
+      "flyOrders": 2.2,
+      "rule": -1.4646148282852351,
+      "ruleOrders": 20,
+      "skipMean": -0.2540444015014641,
+      "skipOrders": 2.6065,
+      "residualCI": {
+        "n": 10,
+        "mean": 0.0300566899198841,
+        "lo": -0.02719265343270506,
+        "hi": 0.08730603327247326
+      },
+      "percentileInSkip": 0.587555,
+      "threshold": 0.007988018626066018,
+      "thresholdPnl": -0.3137509280987416,
+      "thresholdOrders": 2,
+      "flyMinusRule": 1.2796633191497322,
+      "flyMinusThreshold": 0.12879941896323857
+    },
+    {
+      "period": "2026-07-31",
+      "label": "하락장",
+      "fee": 0.006,
+      "repeats": 10,
+      "q": 0.1769230769230769,
+      "flyMean": -0.10396269144299168,
+      "flyOrders": 1.8,
+      "rule": -1.0018455286597572,
+      "ruleOrders": 18,
+      "skipMean": -0.19205728978210002,
+      "skipOrders": 2.5602,
+      "residualCI": {
+        "n": 10,
+        "mean": 0.0287095915713902,
+        "lo": 0.005584977059258242,
+        "hi": 0.051834206083522155
+      },
+      "percentileInSkip": 0.6565199999999999,
+      "threshold": 0.005808445794154737,
+      "thresholdPnl": -0.08710794550107437,
+      "thresholdOrders": 1,
+      "flyMinusRule": 0.8978828372167655,
+      "flyMinusThreshold": -0.016854745941917312
+    },
+    {
+      "period": "2026-08-18",
+      "label": "횡보장",
+      "fee": 0.006,
+      "repeats": 10,
+      "q": 0.11538461538461539,
+      "flyMean": -0.1039811350301875,
+      "flyOrders": 2.1,
+      "rule": -1.5188607061522532,
+      "ruleOrders": 24,
+      "skipMean": -0.14511248530304016,
+      "skipOrders": 2.2018,
+      "residualCI": {
+        "n": 10,
+        "mean": 0.029959605897721932,
+        "lo": -0.006021654803663248,
+        "hi": 0.06594086659910711
+      },
+      "percentileInSkip": 0.5844850000000001,
+      "threshold": 0.003734342267402435,
+      "thresholdPnl": -0.15404126960710585,
+      "thresholdOrders": 2,
+      "flyMinusRule": 1.4148795711220656,
+      "flyMinusThreshold": 0.05006013457691835
+    },
+    {
+      "period": "2026-09-10",
+      "label": "STONKFLY 기간",
+      "fee": 0,
+      "repeats": 30,
+      "q": 0.23846153846153847,
+      "flyMean": 0.27046512195359845,
+      "flyOrders": 4.033333333333333,
+      "rule": 0.21734325524373332,
+      "ruleOrders": 22,
+      "skipMean": 0.30414339271079655,
+      "skipOrders": 4.3017,
+      "residualCI": {
+        "n": 30,
+        "mean": -0.03282845931547232,
+        "lo": -0.14330388444930175,
+        "hi": 0.07764696581835713
+      },
+      "percentileInSkip": 0.46123166666666665,
+      "threshold": 0.004995970280461615,
+      "thresholdPnl": 0.3946261970962155,
+      "thresholdOrders": 4,
+      "flyMinusRule": 0.05312186670986513,
+      "flyMinusThreshold": -0.12416107514261704
+    },
+    {
+      "period": "2025-09-10",
+      "label": "상승장",
+      "fee": 0,
+      "repeats": 10,
+      "q": 0.15384615384615385,
+      "flyMean": 0.23899181907525957,
+      "flyOrders": 3.6,
+      "rule": 0.9218586207990995,
+      "ruleOrders": 26,
+      "skipMean": 0.18528326994561778,
+      "skipOrders": 3.4391,
+      "residualCI": {
+        "n": 10,
+        "mean": 0.04141545690363328,
+        "lo": -0.061404321458935276,
+        "hi": 0.14423523526620186
+      },
+      "percentileInSkip": 0.599695,
+      "threshold": 0.003449611355796245,
+      "thresholdPnl": 0.3589167856058566,
+      "thresholdOrders": 4,
+      "flyMinusRule": -0.68286680172384,
+      "flyMinusThreshold": -0.11992496653059703
+    },
+    {
+      "period": "2026-02-20",
+      "label": "상승장",
+      "fee": 0,
+      "repeats": 10,
+      "q": 0.21923076923076923,
+      "flyMean": -0.026473883730686508,
+      "flyOrders": 4.7,
+      "rule": -0.05256171119229691,
+      "ruleOrders": 26,
+      "skipMean": 0.05652435392140248,
+      "skipOrders": 4.9522,
+      "residualCI": {
+        "n": 10,
+        "mean": -0.0800946004020718,
+        "lo": -0.16783968217283504,
+        "hi": 0.007650481368691453
+      },
+      "percentileInSkip": 0.268695,
+      "threshold": 0.004981577008106086,
+      "thresholdPnl": -0.21494699227739034,
+      "thresholdOrders": 5,
+      "flyMinusRule": 0.026087827461610404,
+      "flyMinusThreshold": 0.18847310854670382
+    },
+    {
+      "period": "2026-05-26",
+      "label": "하락장",
+      "fee": 0,
+      "repeats": 10,
+      "q": 0.16538461538461538,
+      "flyMean": -0.05918658627017237,
+      "flyOrders": 2.2,
+      "rule": -0.2662121008905274,
+      "ruleOrders": 20,
+      "skipMean": -0.1014597167121597,
+      "skipOrders": 2.6065,
+      "residualCI": {
+        "n": 10,
+        "mean": 0.027016523993914122,
+        "lo": -0.02368958211350847,
+        "hi": 0.07772263010133672
+      },
+      "percentileInSkip": 0.587575,
+      "threshold": 0.007988018626066018,
+      "thresholdPnl": -0.1949204508035649,
+      "thresholdOrders": 2,
+      "flyMinusRule": 0.207025514620355,
+      "flyMinusThreshold": 0.13573386453339253
+    },
+    {
+      "period": "2026-07-31",
+      "label": "하락장",
+      "fee": 0,
+      "repeats": 10,
+      "q": 0.1769230769230769,
+      "flyMean": 0.00395679408671441,
+      "flyOrders": 1.8,
+      "rule": 0.018050131851779838,
+      "ruleOrders": 18,
+      "skipMean": -0.040877524373029994,
+      "skipOrders": 2.5602,
+      "residualCI": {
+        "n": 10,
+        "mean": 0.029466674615765253,
+        "lo": 0.006113547868128951,
+        "hi": 0.05281980136340156
+      },
+      "percentileInSkip": 0.6258600000000001,
+      "threshold": 0.005808445794154737,
+      "thresholdPnl": -0.027107945501072095,
+      "thresholdOrders": 1,
+      "flyMinusRule": -0.014093337765065429,
+      "flyMinusThreshold": 0.031064739587786504
+    },
+    {
+      "period": "2026-08-18",
+      "label": "횡보장",
+      "fee": 0,
+      "repeats": 10,
+      "q": 0.11538461538461539,
+      "flyMean": 0.01601795978156133,
+      "flyOrders": 2.1,
+      "rule": -0.07886070615219865,
+      "ruleOrders": 24,
+      "skipMean": -0.01571182745014827,
+      "skipOrders": 2.2018,
+      "residualCI": {
+        "n": 10,
+        "mean": 0.027206133986046162,
+        "lo": -0.0022292131368712616,
+        "hi": 0.05664148110896358
+      },
+      "percentileInSkip": 0.6687249999999999,
+      "threshold": 0.003734342267402435,
+      "thresholdPnl": -0.03424675010774081,
+      "thresholdOrders": 2,
+      "flyMinusRule": 0.09487866593375997,
+      "flyMinusThreshold": 0.05026470988930214
+    }
+  ]
+}

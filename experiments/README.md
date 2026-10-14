@@ -60,6 +60,9 @@ node experiments/sweep.js --config experiments/config/dose-response.json --only-
 - 수수료 반사실(`fee-counterfactual.js`, 결정은 그대로 두고 수수료만 변경, `results/fee-counterfactual/table.md`):
   초파리가 규칙 투자자보다 나은 회차 0.6% 80/80 → 0.1% 63/80 → **0% 45/80(56%)**. 기간 평균 차이(초파리 − 규칙)는
   0.6%에서 +$1.11, 0%에서 −$0.05 → **수수료가 없으면 우위가 사라짐**(2025-09-10 상승장에서는 규칙이 +$0.68 앞섬).
+- 거래량을 맞춘 규칙 투자자(`volume-matched.js`, `results/volume-matched/table.md`): 규칙 방향은 그대로 두고 초파리만큼만
+  거래(나머지 시간은 무작위로 건너뜀)하는 투자자 1만 명과 비교하면, 같은 주문 수 대비 차이 −$0.01 [−$0.05, +$0.04]
+  (기간 단위 $0.00 [−$0.05, +$0.05]) → **거래량이 같으면 초파리와 규칙 투자자는 구별되지 않음**.
 - 매핑 반전(오르면 오른쪽 눈, 같은 시드 6기간 × 10회, `results/reversed/comparison.md`):
   거래 방향이 규칙과 같은 비율 91% → 10%로 뒤집힘. 상승·하락 시간이 한쪽으로 쏠린 기간은 매수/매도 비율도 뒤집힘
   (예: 2026-07-31 매수 5%·매도 13% → 12%·5%). 하지만 손익은 반대 규칙 투자자(−$0.68 ~ −$2.40)와 비슷해지지 않고
@@ -76,6 +79,7 @@ node experiments/sweep.js --config experiments/config/dose-response.json --only-
 
 ```bash
 node experiments/fee-counterfactual.js experiments/config/trade-stonkfly-window-fixed1pct.json experiments/config/periods/*.json
+node experiments/volume-matched.js
 node experiments/periods.js --out reversed experiments/config/reversed/stonkfly.json experiments/config/reversed/p2*.json
 node experiments/compare-mapping.js
 node experiments/figure-summary.js
