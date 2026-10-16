@@ -1,0 +1,141 @@
+<meta charset="utf-8">
+<title>FlyBrain Trader</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: full-bleed WebGL night-office scene; HUD panels float over it on desktop and stack under it on phones.
+   Deliberately single-theme (night trading room). */
+:root {
+  color-scheme: dark;
+  --night: #05060d;
+  --glass: rgba(9, 12, 24, 0.86);
+  --rule: #26304a;
+  --ink: #e9ecf5;
+  --dim: #8b94ab;
+  --up: #2fd47c;
+  --down: #ff5a6e;
+  --neuron: #7fb0ff;
+  --amber: #f4b740;
+  --violet: #b394ff;
+  --display: "Chakra Petch", "IBM Plex Sans KR", system-ui, sans-serif;
+  --body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--night); color: var(--ink); font-family: var(--body); font-size: 14px; overflow: hidden; }
+.stage { position: fixed; inset: 0; }
+#scene { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#scene:active { cursor: grabbing; }
+.hud { position: fixed; inset: 0; pointer-events: none; padding-block: calc(14px + env(safe-area-inset-top, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: minmax(0, 400px) 1fr minmax(0, 330px); grid-template-rows: auto 1fr auto; gap: 14px; }
+.hud > * { pointer-events: auto; }
+.top { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.brand { font-family: var(--display); font-size: 28px; font-weight: 700; letter-spacing: .06em; line-height: 1; text-transform: uppercase; }
+.brand b { color: var(--amber); font-weight: 700; }
+.sub { color: var(--dim); font-size: 12.5px; max-width: 46ch; }
+.controls { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+button, select { font: 500 13px var(--body); color: var(--ink); background: var(--glass); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+button:hover, select:hover { border-color: #3a4870; }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--neuron); outline-offset: 2px; }
+#play { background: var(--amber); border-color: var(--amber); color: #1a1205; font-weight: 700; min-width: 92px; }
+.panel { background: var(--glass); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; backdrop-filter: blur(6px); min-width: 0; }
+.label { font: 500 10.5px var(--data); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.decision { grid-column: 1; grid-row: 3; align-self: end; display: flex; flex-direction: column; gap: 10px; }
+.pnl { grid-column: 3; grid-row: 2; align-self: start; display: flex; flex-direction: column; gap: 8px; }
+.note { grid-column: 3; grid-row: 3; align-self: end; font-size: 11.5px; color: var(--dim); line-height: 1.55; }
+.chain { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 6px; text-align: center; }
+.chain .k { font-size: 11px; color: var(--dim); }
+.chain .v { font: 600 17px var(--data); font-variant-numeric: tabular-nums; }
+.arrow { color: var(--dim); }
+.dn { display: grid; grid-template-columns: 42px 1fr 44px; align-items: center; gap: 8px; font: 12px var(--data); font-variant-numeric: tabular-nums; }
+.bar { height: 10px; background: #18203a; border-radius: 5px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; border-radius: 5px; transition: width .12s linear; }
+#raster { width: 100%; height: 56px; display: block; background: #0a1020; border-radius: 6px; }
+.verdict { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+#verdict { font: 700 22px var(--display); letter-spacing: .04em; }
+#verdictNote { font-size: 12px; color: var(--dim); text-align: right; }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13.5px; padding-block: 4px; border-bottom: 1px solid var(--rule); }
+.row:last-of-type { border-bottom: 0; }
+.row .n { font: 600 15px var(--data); font-variant-numeric: tabular-nums; }
+.row small { color: var(--dim); font-size: 11.5px; display: block; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.final { font-size: 12px; color: var(--dim); line-height: 1.55; }
+.final b { color: var(--ink); font-weight: 600; }
+#info { position: fixed; z-index: 5; inset: auto 0 0 0; margin: 0 auto; max-width: 640px; max-height: 70%; overflow: auto; background: #0b1020; border: 1px solid var(--rule); border-radius: 14px 14px 0 0; padding-block: 18px calc(18px + env(safe-area-inset-bottom, 0px)); padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); line-height: 1.65; font-size: 13.5px; }
+#info h2 { font: 700 18px var(--display); letter-spacing: .04em; margin: 0 0 8px; }
+#info p, #info li { max-width: 64ch; }
+#info ol { padding-left: 1.2em; margin: 6px 0; }
+#loading { position: fixed; inset: 0; display: grid; place-items: center; font: 500 12px var(--data); letter-spacing: .14em; color: var(--dim); }
+.pos { color: var(--up); } .neg { color: var(--down); }
+@media (max-width: 860px) {
+  body { overflow: auto; }
+  .stage { position: relative; height: 58vh; }
+  .hud { position: relative; inset: auto; display: flex; flex-direction: column; }
+  .top { order: -1; }
+  .brand { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+
+<div class="stage"><canvas id="scene" aria-label="책상 앞에서 비트코인 차트를 보고 거래하는 초파리 3D 장면. 머리 위에 초파리 뇌 뉴런이 떠 있다."></canvas></div>
+<div id="loading">LOADING BRAIN RECORDING…</div>
+<div class="hud">
+  <header class="top">
+    <div>
+      <div class="brand">FlyBrain <b>Trader</b></div>
+      <div class="sub">초파리 뇌(FlyWire 뉴런 139,255개) 시뮬레이션이 2026년 9월 10~11일 실제 비트코인 시세를 보고 사고판 기록을 다시 틀어 줍니다.</div>
+    </div>
+    <div class="controls">
+      <button id="play" type="button">▶ 재생</button>
+      <select id="speed" aria-label="재생 속도"><option value="1">속도 1×</option><option value="2">속도 2×</option><option value="4">속도 4×</option></select>
+      <select id="rep" aria-label="회차"></select>
+      <button id="restart" type="button">처음부터</button>
+      <button id="infoBtn" type="button" aria-expanded="false">이게 뭔가요?</button>
+    </div>
+  </header>
+
+  <section class="panel decision" aria-live="polite">
+    <div class="label" id="decTitle">결정 대기 중</div>
+    <div class="chain">
+      <div><div class="k">직전 1시간</div><div class="v" id="ret">—</div></div><div class="arrow">→</div>
+      <div><div class="k">자극</div><div class="v" id="stim" style="color:var(--neuron)">—</div></div><div class="arrow">→</div>
+      <div><div class="k">편향 d</div><div class="v" id="dval">—</div></div>
+    </div>
+    <div>
+      <div class="dn"><span>왼쪽</span><div class="bar"><i id="barL" style="background:var(--up)"></i></div><span id="cntL">0</span></div>
+      <div class="dn" style="margin-top:5px"><span>오른쪽</span><div class="bar"><i id="barR" style="background:var(--down)"></i></div><span id="cntR">0</span></div>
+    </div>
+    <canvas id="raster" width="740" height="112" aria-label="틱마다 하행 뉴런 발화 수"></canvas>
+    <div class="verdict"><span id="verdict">—</span><span id="verdictNote">하행 뉴런 좌우 발화로 결정</span></div>
+  </section>
+
+  <section class="panel pnl">
+    <div class="label">같은 가격 · 같은 규칙 · 손익</div>
+    <div class="row"><span><span class="dot" style="background:var(--amber)"></span>초파리 뇌<small id="flyMeta">주문 0 · 수수료 $0.00</small></span><span class="n" id="flyPnl">$0.00</span></div>
+    <div class="row"><span><span class="dot" style="background:var(--violet)"></span>규칙 투자자<small id="ruleMeta">오르면 사고 내리면 팜</small></span><span class="n" id="rulePnl">$0.00</span></div>
+    <div class="row"><span><span class="dot" style="background:var(--dim)"></span>무작위 투자자 평균<small>매수·매도·보유 1/3씩, 1만 명</small></span><span class="n" id="randPnl">$0.00</span></div>
+    <div class="final" id="final">재생하면 결정마다 손익이 바뀝니다.</div>
+  </section>
+
+  <div class="note panel" id="note">드래그해서 돌려 보세요. 연결 강도는 실험용으로 20배 키운 설정이에요. 숫자는 모두 저장된 시뮬레이션 기록과 실제 시세에서 나옵니다.</div>
+</div>
+
+<div id="info" hidden>
+  <h2>이 화면이 보여 주는 것</h2>
+  <p>초파리 뇌 배선도로 만든 시뮬레이션이 비트코인을 1시간에 한 번씩 사고팔지 정합니다. 결정 순서는 이렇습니다.</p>
+  <ol>
+    <li>직전 1시간 동안 가격이 오르면 왼쪽 눈, 내리면 오른쪽 눈의 광수용체를 자극합니다. 세기는 변동 폭에 비례합니다(1% 이상이면 최대).</li>
+    <li>뇌를 50틱 동안 돌리고, 뇌에서 몸으로 명령을 보내는 하행 뉴런의 좌우 발화 수를 셉니다.</li>
+    <li>편향 d가 +0.2 이상이면 매수, −0.2 이하이면 매도, 그 사이면 보유입니다. 주문은 STONKFLY와 같이 $10, 수수료 0.6%입니다.</li>
+  </ol>
+  <p>"오르면 왼쪽 눈"이라는 연결은 사람이 정했습니다. 초파리는 가격을 모르고, 한쪽 눈에 들어온 빛에 반응할 뿐입니다. 30번 돌린 기록 중 손익이 가운데인 회차, 가장 좋은 회차, 가장 나쁜 회차를 고를 수 있습니다. 같은 뇌라도 잡음 때문에 결과가 꽤 달라집니다.</p>
+  <p>소논문 결론: 초파리가 규칙 투자자보다 나은 건 거래를 적게 해 수수료를 덜 냈기 때문이고, 거래 수가 같은 무작위 투자자와 비교하면 차이가 없습니다.</p>
+  <p class="final">한계: 원래 FlyWire 연결 강도로는 신호가 하행 뉴런까지 거의 가지 않아 실험용으로 20배 키웠습니다. 화면 속 초파리 모형과 책상은 연출이고, 뇌 위치·발화·결정·손익은 실제 기록입니다. 데이터: FlyWire FAFB v783(CC BY-NC), Bitstamp BTC/USD 1분봉(CC BY-SA 4.0), 시뮬레이터 snedea/flybrain(MIT).</p>
+  <button id="infoClose" type="button">닫기</button>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script src="trader.js"></script>
