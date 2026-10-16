@@ -61,7 +61,10 @@ function start(meta) {
 	camera.position.set(-4.6, 3.7, 7.4);
 	var controls = new THREE.OrbitControls(camera, canvas);
 	controls.target.set(0.5, 2.0, 0); controls.enableDamping = true; controls.minDistance = 3; controls.maxDistance = 16;
-	controls.maxPolarAngle = Math.PI * 0.49; controls.update();
+	controls.maxPolarAngle = Math.PI * 0.49;
+	// gentler camera: slower rotate/zoom/pan and more damping so a drag does not fling the view
+	controls.rotateSpeed = 0.35; controls.zoomSpeed = 0.5; controls.panSpeed = 0.4; controls.dampingFactor = 0.12;
+	controls.update();
 
 	scene.add(new THREE.AmbientLight(0x4a5890, 0.38));
 	scene.add(new THREE.HemisphereLight(0x8090ff, 0x201030, 0.2));
