@@ -128,24 +128,28 @@ function writeMeta() {
 	var rule = equityPath(market.ruleActions(points), points, finalPrice, R);
 	// 10,000 random investors, same seed and order as trade.js
 	var rng = makeRng(cfg.random.seed), n = cfg.random.investors, T = points.length;
-	var sum = new Float64Array(T), fins = [];
-	var paths = [];
+	var fins = [], mean = new Float64Array(T);
 	for (var i = 0; i < n; i++) {
 		var acts = market.randomActions(points, rng, cfg.random.probs);
 		var s = market.simulate(acts, points, finalPrice, R); fins.push(s.pnl);
-		if (i < 400) paths.push(acts);
+		equityPath(acts, points, finalPrice, R).path.forEach(function (v, k) { mean[k] += v / n; });   // all 10,000, same as the final numbers
 	}
-	// mean path from the first 400 (cheap); final stats from all 10,000
-	var mean = new Float64Array(T);
-	paths.forEach(function (a) { equityPath(a, points, finalPrice, R).path.forEach(function (v, k) { mean[k] += v / paths.length; }); });
 	fins.sort(function (a, b) { return a - b; });
 	var q = function (p) { return fins[Math.floor(p * (fins.length - 1))]; };
 	var meanAll = fins.reduce(function (a, b) { return a + b; }, 0) / fins.length;
+	// the paper's key comparison, read from the saved trade results (not recomputed here):
+	// each fly run vs random investors (fly's action rates) that executed the same number of orders
+	var resDir = path.join(EXP, 'results', cfg.name), runsCsv = fs.readFileSync(path.join(resDir, 'fly_runs.csv'), 'utf8').trim().split('\n');
+	var head = runsCsv[0].split(','), perRep = {};
+	runsCsv.slice(1).forEach(function (l) { var c = l.split(','), row = {}; head.forEach(function (h, j) { row[h] = c[j]; });
+		if (REPS.indexOf(+row.repeat) >= 0) perRep[row.repeat] = { orders: +row.orders, expected: +row.expected_pnl_same_orders, residual: +row.residual_vs_same_orders }; });
+	var summ = JSON.parse(fs.readFileSync(path.join(resDir, 'summary.json'), 'utf8')), resid = summ.fly.residualVsSameOrders;
+	var matched = { perRep: perRep, runs: resid.n, mean: resid.mean, lo: resid.lo, hi: resid.hi };
 	var meta = {
 		source: 'experiments/config/trade-stonkfly-window-fixed1pct.json (weightScale 20, VIS_R1R6, descending readout)',
 		rules: R, nNeurons: N, subsetSize: sub.list.length, positionsU16: Buffer.from(sp.buffer).toString('base64'), role: sub.role, cls: sub.list.map(function (o) { return cls[o]; }),
 		candles: candles, points: points.map(function (p) { return { t: p.t, price: p.price, ret: p.ret }; }), finalPrice: finalPrice,
-		reps: reps, rule: rule,
+		reps: reps, rule: rule, matched: matched,
 		random: { n: n, meanPath: Array.from(mean), finalMean: meanAll, p05: q(0.05), p50: q(0.5), p95: q(0.95), shareGe1: fins.filter(function (v) { return v >= 1; }).length / n }
 	};
 	fs.writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify(meta));

@@ -159,6 +159,8 @@ function start(meta) {
 		fly.userData.ring = ring;
 	})();
 	fly.scale.setScalar(1.05); fly.position.set(-0.4, DT + 0.62, 0.45); fly.lookAt(1.9, DT + 0.62, -1.0); fly.rotateY(-0.15); scene.add(fly);
+	// the descending neurons' left/right imbalance is a turning command: the fly turns toward the side that fired more
+	var flyBaseQ = fly.quaternion.clone(), turnQ = new THREE.Quaternion(), YAXIS = new THREE.Vector3(0, 1, 0), turn = 0, turnTarget = 0;
 
 	/* ---------- brain hologram from real FlyWire positions ---------- */
 	// every point is a real neuron at its FlyWire position; it lights up only on ticks where the recorded run fired it
@@ -198,11 +200,15 @@ function start(meta) {
 	var hring = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.19, 96), new THREE.MeshBasicMaterial({ color: 0x28e0e0, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false })); hring.rotation.x = -Math.PI / 2; hring.position.y = -0.85; holo.add(hring);
 	var hring2 = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.31, 96), new THREE.MeshBasicMaterial({ color: 0x28e0e0, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false })); hring2.rotation.x = -Math.PI / 2; hring2.position.y = -0.85; holo.add(hring2);
 	function labelCanvas(lines, w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+	var labelRedraws = [];   // labels are redrawn once the web fonts have arrived
 	function sprite(text, color, w, sub) {
-		var c = labelCanvas(null, 512, 96), g = c.getContext('2d'); g.textAlign = 'center';
-		g.font = '600 30px "IBM Plex Sans KR", sans-serif'; g.fillStyle = color; g.fillText(text, 256, 38);
-		if (sub) { g.font = '24px "IBM Plex Sans KR", sans-serif'; g.fillStyle = 'rgba(200,210,230,.75)'; g.fillText(sub, 256, 74); }
-		var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false })); s.scale.set(w, w * 96 / 512, 1); return s;
+		var c = labelCanvas(null, 512, 96), tex = new THREE.CanvasTexture(c);
+		function draw() { var g = c.getContext('2d'); g.clearRect(0, 0, 512, 96); g.textAlign = 'center';
+			g.font = '600 30px "IBM Plex Sans KR", sans-serif'; g.fillStyle = color; g.fillText(text, 256, 38);
+			if (sub) { g.font = '24px "IBM Plex Sans KR", sans-serif'; g.fillStyle = 'rgba(200,210,230,.75)'; g.fillText(sub, 256, 74); }
+			tex.needsUpdate = true; }
+		draw(); labelRedraws.push(draw);
+		var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); s.scale.set(w, w * 96 / 512, 1); return s;
 	}
 	function centroid(rr) { var v = new THREE.Vector3(), n = 0; for (var a = 0; a < M; a++) if (role[a] === rr) { v.x += pos[a * 3]; v.y += pos[a * 3 + 1]; v.z += pos[a * 3 + 2]; n++; } return n ? v.multiplyScalar(1 / n) : v; }
 	var cEL = centroid(1), cER = centroid(2), cDL = centroid(3), cDR = centroid(4);
@@ -213,7 +219,7 @@ function start(meta) {
 	// live readout above the brain
 	var rc2 = labelCanvas(null, 1280, 72), rtex = new THREE.CanvasTexture(rc2);
 	var readout = new THREE.Sprite(new THREE.SpriteMaterial({ map: rtex, transparent: true, depthWrite: false })); readout.scale.set(3.4, 3.4 * 72 / 1280, 1); readout.position.set(0, 1.05, 0); readout.visible = false; holo.add(readout);
-	function setReadout(text, color) { var g = rc2.getContext('2d'); g.clearRect(0, 0, 1280, 72); g.textAlign = 'center'; g.font = '500 30px "IBM Plex Mono", monospace'; g.fillStyle = color || '#8b94ab'; g.fillText(text, 640, 46, 1260); rtex.needsUpdate = true; }
+	var lastReadout = ['', null]; function setReadout(text, color) { lastReadout = [text, color]; var g = rc2.getContext('2d'); g.clearRect(0, 0, 1280, 72); g.textAlign = 'center'; g.font = '500 30px "IBM Plex Mono", monospace'; g.fillStyle = color || '#8b94ab'; g.fillText(text, 640, 46, 1260); rtex.needsUpdate = true; }
 	setReadout('뇌 · 뉴런 ' + M.toLocaleString() + '개 표시 (전체 ' + meta.nNeurons.toLocaleString() + '개)');
 	holo.position.set(-1.9, 3.55, 0.1); holo.rotation.y = 0.25; scene.add(holo);
 	function paintBrain() { glowAttr.needsUpdate = true; }
@@ -282,7 +288,7 @@ function start(meta) {
 	}
 
 	/* ---------- replay state machine ---------- */
-	var st = null, playing = false, speed = 1, spikes = null, camTween = null, focused = false;
+	var st = null, playing = false, speed = 1, spikes = null, camTween = null, view = 'home';
 	var HOME = { p: camera.position.clone(), t: controls.target.clone() };
 	function flyTo(p1, t1) { camTween = { t: 0, p0: camera.position.clone(), p1: p1, t0: controls.target.clone(), t1: t1 }; }
 	var repSel = $('rep');
@@ -314,8 +320,12 @@ function start(meta) {
 		$('ruleMeta').textContent = '주문 ' + rw.orders + ' · 수수료 $' + rw.fees.toFixed(2);
 		if (fin) {
 			var rd = meta.random;
-			$('final').innerHTML = '끝. 초파리는 규칙 투자자보다 <b>' + money(st.info.equity.final - meta.rule.final).replace('+', '') + '</b> 나았고, 그 차이는 수수료 차이(<b>$' + (meta.rule.fees - st.info.equity.fees).toFixed(2) + '</b>)와 비슷합니다. 무작위 투자자 1만 명의 가운데 90%는 ' + money(rd.p05) + ' ~ ' + money(rd.p95) + ', $1 이상 번 사람은 ' + (rd.shareGe1 * 100).toFixed(1) + '%였습니다.';
-		} else $('final').textContent = '결정 ' + Math.max(0, st.decided) + ' / ' + P.length + ' · 손익은 그 시각 시세로 평가';
+			var mt = meta.matched, mr = mt.perRep[st.rep];
+			var mEl = $('matchPnl'); mEl.textContent = money(mr.expected); mEl.className = 'n ' + (mr.expected > 0.004 ? 'pos' : (mr.expected < -0.004 ? 'neg' : ''));
+			$('matchMeta').textContent = '초파리처럼 주문 ' + mr.orders + '건만 한 무작위 투자자';
+			$('final').innerHTML = '끝. 초파리는 규칙 투자자보다 <b>' + money(st.info.equity.final - meta.rule.final).replace('+', '') + '</b> 나았고, 그 차이는 대부분 수수료 차이(<b>$' + (meta.rule.fees - st.info.equity.fees).toFixed(2) + '</b>)입니다. ' +
+				'주문 수가 같은 무작위 투자자와 비교하면 이 회차는 <b>' + money(mr.residual) + '</b>, ' + mt.runs + '번 돌린 전체 평균은 <b>' + money(mt.mean) + '</b>(95% 신뢰구간 ' + money(mt.lo) + ' ~ ' + money(mt.hi) + ')로 0과 구별되지 않습니다. 한 회차의 큰 이익은 운으로도 나옵니다.';
+		} else { $('final').textContent = '결정 ' + Math.max(0, st.decided) + ' / ' + P.length + ' · 손익은 그 시각 시세로 평가'; $('matchPnl').textContent = '끝나면 표시'; $('matchPnl').className = 'n pending'; $('matchMeta').textContent = '초파리와 주문 수가 같은 무작위 투자자'; }
 	}
 
 	var WALK = 0.42, STIM = 0.8, TICK = 0.045, ACT = 1.1;
@@ -349,6 +359,7 @@ function start(meta) {
 		setVerdict(label, st.cur.note || ('왼 ' + d.spikesL + ' : 오 ' + d.spikesR), color);
 		setReadout('하행 왼 ' + d.spikesL + ' : 오 ' + d.spikesR + ' · d = ' + (d.d >= 0 ? '+' : '−') + Math.abs(d.d).toFixed(2) + ' → ' + label, color);
 		st.decided = st.cur.k + 1; st.phase = 'act'; st.t = 0; beam.material.opacity = 0;
+		turnTarget = Math.max(-1, Math.min(1, d.d)) * (ex === 'hold' ? 0.25 : 0.65);   // + = toward the fly's left
 		var ring = fly.userData.ring; ring.material.color.set(ex === 'sell' ? 0xff5a6e : 0x2fd47c); ring.material.opacity = ex === 'hold' ? 0 : 1; ring.scale.setScalar(1);
 		updatePnl(); drawMonitor(st);
 	}
@@ -368,7 +379,7 @@ function start(meta) {
 			while (st.t >= TICK && st.tick < 50) { st.t -= TICK; playTick(); st.tick++; }
 			if (st.tick >= 50) finishDecision();
 		} else if (st.phase === 'act') {
-			if (st.t >= ACT) { st.phase = 'walk'; st.t = 0; drawMonitor(st); }
+			if (st.t >= ACT) { st.phase = 'walk'; st.t = 0; turnTarget = 0; drawMonitor(st); }
 		}
 	}
 
@@ -381,7 +392,7 @@ function start(meta) {
 		if (playing) step(dt);
 		var decay = Math.pow(0.86, dt * 60); for (var i = 0; i < M; i++) if (glow[i] > 0.01) glow[i] *= decay; else glow[i] = 0;
 		var busy = st && st.phase === 'ticks' ? 1 : 0; bmat.uniforms.uDim.value += ((busy ? 1.35 : 1) - bmat.uniforms.uDim.value) * Math.min(1, dt * 4); hring.material.opacity = 0.35 + 0.3 * busy * (0.5 + 0.5 * Math.sin(elapsed * 10));
-		var fogN = focused ? 5 : 16, fogF = focused ? 12 : 42; scene.fog.near += (fogN - scene.fog.near) * Math.min(1, dt * 3); scene.fog.far += (fogF - scene.fog.far) * Math.min(1, dt * 3);
+		var focused = view === 'brain', fogN = focused ? 5 : 16, fogF = focused ? 12 : 42; scene.fog.near += (fogN - scene.fog.near) * Math.min(1, dt * 3); scene.fog.far += (fogF - scene.fog.far) * Math.min(1, dt * 3);
 		if (camTween) { camTween.t = Math.min(1, camTween.t + dt / 0.9); var e = camTween.t * camTween.t * (3 - 2 * camTween.t); camera.position.lerpVectors(camTween.p0, camTween.p1, e); controls.target.lerpVectors(camTween.t0, camTween.t1, e); if (camTween.t >= 1) camTween = null; }
 		paintBrain();
 		if (!reduceMotion) {
@@ -390,6 +401,7 @@ function start(meta) {
 		}
 		var press = st && st.phase === 'act' && st.cur.executed !== 'hold' ? Math.sin(Math.min(1, st.t / 0.35) * Math.PI) : 0;
 		arm.rotation.x = 0.35 * press;
+		turn += (turnTarget - turn) * Math.min(1, dt * (reduceMotion ? 20 : 3)); fly.quaternion.copy(flyBaseQ).multiply(turnQ.setFromAxisAngle(YAXIS, turn));
 		var ring = fly.userData.ring; if (ring.material.opacity > 0) { ring.scale.multiplyScalar(1 + dt * 1.6); ring.material.opacity = Math.max(0, ring.material.opacity - dt * 0.9); }
 		controls.update(); renderer.render(scene, camera);
 		requestAnimationFrame(frame);
@@ -399,12 +411,17 @@ function start(meta) {
 		if (st.done) { reset(st.rep).then(function () { playing = true; $('play').textContent = '❚❚ 일시정지'; }); return; }
 		playing = !playing; $('play').textContent = playing ? '❚❚ 일시정지' : '▶ 재생';
 	});
-	$('focus').addEventListener('click', function () {
-		focused = !focused; $('focus').textContent = focused ? '전체 보기' : '뇌 확대'; $('focus').setAttribute('aria-pressed', String(focused));
-		readout.visible = focused;
-		if (focused) { var c = holo.position.clone(); flyTo(c.clone().add(new THREE.Vector3(0.7, 0.3, 4.4)), c.clone().add(new THREE.Vector3(0, 0.1, 0))); }
+	function setView(v) {
+		view = v; readout.visible = v === 'brain';
+		$('focus').setAttribute('aria-pressed', String(v === 'brain')); $('monitorBtn').setAttribute('aria-pressed', String(v === 'monitor'));
+		$('focus').textContent = v === 'brain' ? '전체 보기' : '뇌 확대'; $('monitorBtn').textContent = v === 'monitor' ? '전체 보기' : '모니터 보기';
+		if (v === 'brain') { var c = holo.position.clone(); flyTo(c.clone().add(new THREE.Vector3(0.7, 0.3, 4.4)), c.clone().add(new THREE.Vector3(0, 0.1, 0))); }
+		else if (v === 'monitor') { var n = new THREE.Vector3(0, 0, 1).applyQuaternion(screen.quaternion); flyTo(screen.position.clone().add(n.multiplyScalar(3.1)).add(new THREE.Vector3(0, 0.45, 0)), screen.position.clone().add(new THREE.Vector3(0, 0.1, 0))); }
 		else flyTo(HOME.p.clone(), HOME.t.clone());
-	});
+	}
+	$('focus').addEventListener('click', function () { setView(view === 'brain' ? 'home' : 'brain'); });
+	$('monitorBtn').addEventListener('click', function () { setView(view === 'monitor' ? 'home' : 'monitor'); });
+	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { labelRedraws.forEach(function (f) { f(); }); if (lastReadout[0]) setReadout(lastReadout[0], lastReadout[1]); });
 	$('speed').addEventListener('change', function (e) { speed = +e.target.value; });
 	repSel.addEventListener('change', function (e) { playing = false; $('play').textContent = '▶ 재생'; reset(+e.target.value); });
 	$('restart').addEventListener('click', function () { playing = false; $('play').textContent = '▶ 재생'; reset(st.rep); });
@@ -414,7 +431,7 @@ function start(meta) {
 	resize();
 	reset(meta.reps[0].rep).then(function () {
 		$('loading').hidden = true;
-		// open on a realistic working state: fast-forward to just before the 5th decision
+		// open on a realistic working state: fast-forward to just before the 13th decision
 		while (!(st.phase === 'walk' && st.decided >= 12 && st.candle >= DEC_CANDLE[12] - 1)) step(0.5);
 		drawMonitor(st); updatePnl();
 		frame();
