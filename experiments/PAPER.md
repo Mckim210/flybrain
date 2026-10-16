@@ -177,7 +177,7 @@
   `node experiments/compare-weights.js`
 - 한계: 배율 두 가지(×10, ×20)만 비교, 기간마다 10회. ×10에서는 확인 실험(3절)을 따로 하지 않음(용량-반응 표의 ×10 행만 있음).
 
-## 8. STONKFLY 원본 뇌로 한 사전등록 실험 (다른 저장소, 소논문 Ⅳ장 6절·표 5)
+## 8. STONKFLY 원본 뇌로 한 사전등록 실험 (다른 저장소, 소논문 Ⅳ장 1절·표 2)
 
 이 저장소가 아니라 **Mckim210/stonkfly**의 `scramble-wiring-control` 브랜치에 있다(STONKFLY 코드와 MaleCNS v1.0 뇌를 고치지 않고 사용).
 - 설계: 2026-10-02 ~ 10-11, 매일 UTC 00:00–03:00 Coinbase BTC-USDC 1분봉 테이프(관측 180번)를 모두에게 똑같이 재생.
