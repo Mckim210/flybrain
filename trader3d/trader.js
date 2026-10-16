@@ -161,40 +161,62 @@ function start(meta) {
 	fly.scale.setScalar(1.05); fly.position.set(-0.4, DT + 0.62, 0.45); fly.lookAt(1.9, DT + 0.62, -1.0); fly.rotateY(-0.15); scene.add(fly);
 
 	/* ---------- brain hologram from real FlyWire positions ---------- */
-	var role = meta.role, M = meta.subsetSize, pu = b64ToU16(meta.positionsU16);
+	// every point is a real neuron at its FlyWire position; it lights up only on ticks where the recorded run fired it
+	var role = meta.role, cls = meta.cls || [], M = meta.subsetSize, pu = b64ToU16(meta.positionsU16);
 	var cx = 0, cy = 0, cz = 0, lx = 0, rx = 0, nl = 0, nr = 0;
 	for (var a = 0; a < M; a++) { cx += pu[a * 3]; cy += pu[a * 3 + 1]; cz += pu[a * 3 + 2]; if (role[a] === 1) { lx += pu[a * 3]; nl++; } if (role[a] === 2) { rx += pu[a * 3]; nr++; } }
 	cx /= M; cy /= M; cz /= M;
 	var mirror = (lx / nl) > (rx / nr) ? -1 : 1;   // put the fly's left eye on the viewer's left
 	var SC = 2.4 / 65535;
-	function cloud(filter, size) {
-		var idx = []; for (var a = 0; a < M; a++) if (filter(role[a])) idx.push(a);
-		var pos = new Float32Array(idx.length * 3), col = new Float32Array(idx.length * 3);
-		idx.forEach(function (a, i) { pos[i * 3] = mirror * (pu[a * 3] - cx) * SC; pos[i * 3 + 1] = -(pu[a * 3 + 1] - cy) * SC; pos[i * 3 + 2] = (pu[a * 3 + 2] - cz) * SC; });
-		var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-		var pts = new THREE.Points(g, new THREE.PointsMaterial({ size: size, vertexColors: true, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
-		return { pts: pts, idx: idx, col: col };
+	// resting tint by brain region (FlyWire super_class), hot colour by what the neuron means for the decision
+	var REGION = [[0.11, 0.16, 0.32], [0.2, 0.13, 0.32], [0.09, 0.24, 0.22], [0.09, 0.2, 0.3], [0.22, 0.2, 0.12], [0.3, 0.18, 0.2], [0.16, 0.24, 0.12], [0.14, 0.15, 0.3], [0.3, 0.16, 0.24], [0.3, 0.22, 0.28]];
+	var ROLE_BASE = { 1: [0.16, 0.27, 0.52], 2: [0.16, 0.27, 0.52], 3: [0.08, 0.34, 0.2], 4: [0.38, 0.11, 0.15], 5: [0.3, 0.2, 0.2] };
+	var ROLE_HOT = { 0: [0.92, 0.9, 1], 1: [0.55, 0.82, 1], 2: [0.55, 0.82, 1], 3: [0.32, 1, 0.58], 4: [1, 0.36, 0.43], 5: [1, 0.75, 0.6] };
+	var pos = new Float32Array(M * 3), aBase = new Float32Array(M * 3), aHot = new Float32Array(M * 3), aSize = new Float32Array(M), glow = new Float32Array(M);
+	for (var a2 = 0; a2 < M; a2++) {
+		pos[a2 * 3] = mirror * (pu[a2 * 3] - cx) * SC; pos[a2 * 3 + 1] = -(pu[a2 * 3 + 1] - cy) * SC; pos[a2 * 3 + 2] = (pu[a2 * 3 + 2] - cz) * SC;
+		var r0 = role[a2], b0 = ROLE_BASE[r0] || REGION[cls[a2]] || REGION[1], h0 = ROLE_HOT[r0];
+		aBase.set(b0, a2 * 3); aHot.set(h0, a2 * 3); aSize[a2] = r0 >= 3 ? 2.3 : (r0 > 0 ? 1.15 : 1);
 	}
-	var clouds = [cloud(function (r) { return r < 3; }, 0.026), cloud(function (r) { return r >= 3; }, 0.055)];
-	var where = new Int32Array(M * 2);   // subset index -> (cloud, position)
-	clouds.forEach(function (c, ci) { c.idx.forEach(function (a, i) { where[a * 2] = ci; where[a * 2 + 1] = i; }); });
-	var glow = new Float32Array(M);
-	var BASE = { 0: [0.16, 0.2, 0.34], 1: [0.18, 0.28, 0.52], 2: [0.18, 0.28, 0.52], 3: [0.42, 0.14, 0.2], 4: [0.42, 0.14, 0.2], 5: [0.42, 0.14, 0.2] };
-	var HOT = { 0: [0.85, 0.85, 1], 1: [0.5, 0.75, 1], 2: [0.5, 0.75, 1], 3: [1, 0.4, 0.45], 4: [1, 0.4, 0.45], 5: [1, 0.4, 0.45] };
-	var holo = new THREE.Group(); clouds.forEach(function (c) { holo.add(c.pts); });
-	var hring = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.19, 64), new THREE.MeshBasicMaterial({ color: 0x28e0e0, transparent: true, opacity: 0.45, side: THREE.DoubleSide })); hring.rotation.x = -Math.PI / 2; hring.position.y = -0.8; holo.add(hring);
-	function sprite(text, color, w) { var c = document.createElement('canvas'); c.width = 512; c.height = 64; var g = c.getContext('2d'); g.font = '600 30px "IBM Plex Sans KR", sans-serif'; g.fillStyle = color; g.textAlign = 'center'; g.fillText(text, 256, 42); var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false })); s.scale.set(w, w / 8, 1); return s; }
-	var sL = sprite('왼쪽 눈', COL.neuron, 1.3); sL.position.set(-1.25, 0.65, 0); holo.add(sL);
-	var sR = sprite('오른쪽 눈', COL.neuron, 1.3); sR.position.set(1.25, 0.65, 0); holo.add(sR);
-	var sD = sprite('하행 뉴런 (뇌 → 몸)', COL.down, 1.8); sD.position.set(0, -0.62, 0.4); holo.add(sD);
+	var bgeo = new THREE.BufferGeometry();
+	bgeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+	bgeo.setAttribute('aBase', new THREE.BufferAttribute(aBase, 3));
+	bgeo.setAttribute('aHot', new THREE.BufferAttribute(aHot, 3));
+	bgeo.setAttribute('aSize', new THREE.BufferAttribute(aSize, 1));
+	var glowAttr = new THREE.BufferAttribute(glow, 1); glowAttr.setUsage(THREE.DynamicDrawUsage); bgeo.setAttribute('aGlow', glowAttr);
+	var bmat = new THREE.ShaderMaterial({
+		uniforms: { uScale: { value: 14 }, uDim: { value: 1 } },
+		vertexShader: 'attribute vec3 aBase; attribute vec3 aHot; attribute float aSize; attribute float aGlow; uniform float uScale; uniform float uDim; varying vec3 vCol; varying float vA;' +
+			'void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; float g = aGlow;' +
+			' vCol = mix(aBase * uDim, aHot, g); vA = 0.5 + 0.5 * g; gl_PointSize = aSize * (1.0 + 2.4 * g) * uScale / max(0.5, -mv.z); }',
+		fragmentShader: 'varying vec3 vCol; varying float vA; void main(){ vec2 d = gl_PointCoord - 0.5; float r = length(d); if (r > 0.5) discard;' +
+			' float core = smoothstep(0.5, 0.0, r); gl_FragColor = vec4(vCol * (0.55 + 0.9 * core), core * core * vA); }',
+		transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+	});
+	var brainPts = new THREE.Points(bgeo, bmat);
+	var holo = new THREE.Group(); holo.add(brainPts);
+	var hring = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.19, 96), new THREE.MeshBasicMaterial({ color: 0x28e0e0, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false })); hring.rotation.x = -Math.PI / 2; hring.position.y = -0.85; holo.add(hring);
+	var hring2 = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.31, 96), new THREE.MeshBasicMaterial({ color: 0x28e0e0, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false })); hring2.rotation.x = -Math.PI / 2; hring2.position.y = -0.85; holo.add(hring2);
+	function labelCanvas(lines, w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+	function sprite(text, color, w, sub) {
+		var c = labelCanvas(null, 512, 96), g = c.getContext('2d'); g.textAlign = 'center';
+		g.font = '600 30px "IBM Plex Sans KR", sans-serif'; g.fillStyle = color; g.fillText(text, 256, 38);
+		if (sub) { g.font = '24px "IBM Plex Sans KR", sans-serif'; g.fillStyle = 'rgba(200,210,230,.75)'; g.fillText(sub, 256, 74); }
+		var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false })); s.scale.set(w, w * 96 / 512, 1); return s;
+	}
+	function centroid(rr) { var v = new THREE.Vector3(), n = 0; for (var a = 0; a < M; a++) if (role[a] === rr) { v.x += pos[a * 3]; v.y += pos[a * 3 + 1]; v.z += pos[a * 3 + 2]; n++; } return n ? v.multiplyScalar(1 / n) : v; }
+	var cEL = centroid(1), cER = centroid(2), cDL = centroid(3), cDR = centroid(4);
+	var sEL = sprite('왼쪽 눈', COL.neuron, 1.2, '오르면 자극'); sEL.position.set(cEL.x, cEL.y + 0.55, cEL.z); holo.add(sEL);
+	var sER = sprite('오른쪽 눈', COL.neuron, 1.2, '내리면 자극'); sER.position.set(cER.x, cER.y + 0.55, cER.z); holo.add(sER);
+	var sDL = sprite('왼쪽 하행 뉴런', COL.up, 1.3, '더 많으면 매수'); sDL.position.set(cDL.x - 0.35, cDL.y - 0.5, cDL.z + 0.3); holo.add(sDL);
+	var sDR = sprite('오른쪽 하행 뉴런', COL.down, 1.3, '더 많으면 매도'); sDR.position.set(cDR.x + 0.35, cDR.y - 0.5, cDR.z + 0.3); holo.add(sDR);
+	// live readout above the brain
+	var rc2 = labelCanvas(null, 1280, 72), rtex = new THREE.CanvasTexture(rc2);
+	var readout = new THREE.Sprite(new THREE.SpriteMaterial({ map: rtex, transparent: true, depthWrite: false })); readout.scale.set(3.4, 3.4 * 72 / 1280, 1); readout.position.set(0, 1.05, 0); readout.visible = false; holo.add(readout);
+	function setReadout(text, color) { var g = rc2.getContext('2d'); g.clearRect(0, 0, 1280, 72); g.textAlign = 'center'; g.font = '500 30px "IBM Plex Mono", monospace'; g.fillStyle = color || '#8b94ab'; g.fillText(text, 640, 46, 1260); rtex.needsUpdate = true; }
+	setReadout('뇌 · 뉴런 ' + M.toLocaleString() + '개 표시 (전체 ' + meta.nNeurons.toLocaleString() + '개)');
 	holo.position.set(-1.9, 3.55, 0.1); holo.rotation.y = 0.25; scene.add(holo);
-	function paintBrain() {
-		clouds.forEach(function (c) {
-			for (var i = 0; i < c.idx.length; i++) { var a = c.idx[i], r = role[a], g = glow[a], b = BASE[r], h = HOT[r];
-				c.col[i * 3] = b[0] + (h[0] - b[0]) * g; c.col[i * 3 + 1] = b[1] + (h[1] - b[1]) * g; c.col[i * 3 + 2] = b[2] + (h[2] - b[2]) * g; }
-			c.pts.geometry.attributes.color.needsUpdate = true;
-		});
-	}
+	function paintBrain() { glowAttr.needsUpdate = true; }
 	paintBrain();
 
 	// stimulus beam from the screen to one eye
@@ -260,7 +282,9 @@ function start(meta) {
 	}
 
 	/* ---------- replay state machine ---------- */
-	var st = null, playing = false, speed = 1, spikes = null;
+	var st = null, playing = false, speed = 1, spikes = null, camTween = null, focused = false;
+	var HOME = { p: camera.position.clone(), t: controls.target.clone() };
+	function flyTo(p1, t1) { camTween = { t: 0, p0: camera.position.clone(), p1: p1, t0: controls.target.clone(), t1: t1 }; }
 	var repSel = $('rep');
 	meta.reps.forEach(function (r) { var o = document.createElement('option'); o.value = r.rep; o.textContent = REP_LABEL[r.rep] + ' (' + money(r.equity.final) + ')'; repSel.appendChild(o); });
 	var dnL = [], dnR = []; for (var z = 0; z < M; z++) { if (role[z] === 3) dnL.push(z); if (role[z] === 4) dnR.push(z); }
@@ -270,7 +294,7 @@ function start(meta) {
 	function reset(rep) {
 		var info = meta.reps.filter(function (r) { return r.rep === rep; })[0];
 		st = { rep: rep, info: info, wallet: walletPath(info.decisions.map(function (d) { return d.action; })), candle: 0, decided: 0, phase: 'walk', t: 0, tick: 0, cur: null, done: false };
-		glow.fill(0); paintBrain(); setVerdict('—', '하행 뉴런 좌우 발화로 결정', COL.ink);
+		glow.fill(0); paintBrain(); setVerdict('—', '하행 뉴런 좌우 발화로 결정', COL.ink); setReadout('뇌 · 뉴런 ' + M.toLocaleString() + '개 표시 (전체 ' + meta.nNeurons.toLocaleString() + '개)');
 		$('decTitle').textContent = '첫 결정까지 시세를 따라갑니다'; $('ret').textContent = '—'; $('stim').textContent = '—'; $('dval').textContent = '—';
 		setDN(0, 0); clearRaster(); updatePnl(); drawMonitor(st);
 		return loadSpikes(rep).then(function (s) { spikes = s; });
@@ -308,11 +332,13 @@ function start(meta) {
 		$('stim').textContent = d.intensity > 0 ? (d.eye === 'left' ? '왼쪽 눈 ' : '오른쪽 눈 ') + d.intensity.toFixed(2) : '자극 없음';
 		$('dval').textContent = '…'; setDN(0, 0); clearRaster(); setVerdict('뇌 계산 중', '50틱 동안 하행 뉴런 발화를 셉니다', COL.neuron);
 		if (d.intensity > 0) { aimBeam(d.eye); beam.material.opacity = 0.9; }
+		setReadout(d.intensity > 0 ? (d.eye === 'left' ? '왼쪽' : '오른쪽') + ' 눈 자극 · 세기 ' + d.intensity.toFixed(2) : '자극 없음 · 잡음만', COL.neuron);
 	}
 	function playTick() {
 		var ticks = spikes[st.cur.k], t = st.tick, f = ticks[t], l = 0, r = 0;
 		for (var i = 0; i < f.length; i++) { var a = f[i]; glow[a] = 1; if (isL[a]) l++; else if (isR[a]) r++; }
 		st.cur.l += l; st.cur.r += r; setDN(st.cur.l, st.cur.r); rasterTick(t, l, r);
+		var tt = st.cur.d.tickTotals ? st.cur.d.tickTotals[t] : null; setReadout('틱 ' + (t + 1) + '/50' + (tt != null ? ' · 뇌 전체 발화 ' + tt.toLocaleString() : '') + ' · 하행 왼 ' + st.cur.l + ' : 오 ' + st.cur.r, '#e9ecf5');
 	}
 	function finishDecision() {
 		var d = st.cur.d;
@@ -321,6 +347,7 @@ function start(meta) {
 		var ex = st.cur.executed, label = { buy: '매수 $10', sell: '매도 $10', hold: '보유' }[ex];
 		var color = ex === 'buy' ? COL.up : (ex === 'sell' ? COL.down : COL.ink);
 		setVerdict(label, st.cur.note || ('왼 ' + d.spikesL + ' : 오 ' + d.spikesR), color);
+		setReadout('하행 왼 ' + d.spikesL + ' : 오 ' + d.spikesR + ' · d = ' + (d.d >= 0 ? '+' : '−') + Math.abs(d.d).toFixed(2) + ' → ' + label, color);
 		st.decided = st.cur.k + 1; st.phase = 'act'; st.t = 0; beam.material.opacity = 0;
 		var ring = fly.userData.ring; ring.material.color.set(ex === 'sell' ? 0xff5a6e : 0x2fd47c); ring.material.opacity = ex === 'hold' ? 0 : 1; ring.scale.setScalar(1);
 		updatePnl(); drawMonitor(st);
@@ -347,12 +374,15 @@ function start(meta) {
 
 	/* ---------- animation ---------- */
 	var arm = fly.userData.arm, clock = new THREE.Clock(), elapsed = 0;
-	function resize() { var w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+	function resize() { var w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); bmat.uniforms.uScale.value = 0.016 * h * renderer.getPixelRatio(); }
 	window.addEventListener('resize', resize);
 	function frame() {
 		var dt = Math.min(0.1, clock.getDelta()); elapsed += dt;
 		if (playing) step(dt);
-		for (var i = 0; i < M; i++) if (glow[i] > 0.01) glow[i] *= 0.86; else glow[i] = 0;
+		var decay = Math.pow(0.86, dt * 60); for (var i = 0; i < M; i++) if (glow[i] > 0.01) glow[i] *= decay; else glow[i] = 0;
+		var busy = st && st.phase === 'ticks' ? 1 : 0; bmat.uniforms.uDim.value += ((busy ? 1.35 : 1) - bmat.uniforms.uDim.value) * Math.min(1, dt * 4); hring.material.opacity = 0.35 + 0.3 * busy * (0.5 + 0.5 * Math.sin(elapsed * 10));
+		var fogN = focused ? 5 : 16, fogF = focused ? 12 : 42; scene.fog.near += (fogN - scene.fog.near) * Math.min(1, dt * 3); scene.fog.far += (fogF - scene.fog.far) * Math.min(1, dt * 3);
+		if (camTween) { camTween.t = Math.min(1, camTween.t + dt / 0.9); var e = camTween.t * camTween.t * (3 - 2 * camTween.t); camera.position.lerpVectors(camTween.p0, camTween.p1, e); controls.target.lerpVectors(camTween.t0, camTween.t1, e); if (camTween.t >= 1) camTween = null; }
 		paintBrain();
 		if (!reduceMotion) {
 			wings.forEach(function (w) { w.g.rotation.z = w.s * 0.03 * Math.sin(elapsed * 2.1); });
@@ -368,6 +398,12 @@ function start(meta) {
 	$('play').addEventListener('click', function () {
 		if (st.done) { reset(st.rep).then(function () { playing = true; $('play').textContent = '❚❚ 일시정지'; }); return; }
 		playing = !playing; $('play').textContent = playing ? '❚❚ 일시정지' : '▶ 재생';
+	});
+	$('focus').addEventListener('click', function () {
+		focused = !focused; $('focus').textContent = focused ? '전체 보기' : '뇌 확대'; $('focus').setAttribute('aria-pressed', String(focused));
+		readout.visible = focused;
+		if (focused) { var c = holo.position.clone(); flyTo(c.clone().add(new THREE.Vector3(0.7, 0.3, 4.4)), c.clone().add(new THREE.Vector3(0, 0.1, 0))); }
+		else flyTo(HOME.p.clone(), HOME.t.clone());
 	});
 	$('speed').addEventListener('change', function (e) { speed = +e.target.value; });
 	repSel.addEventListener('change', function (e) { playing = false; $('play').textContent = '▶ 재생'; reset(+e.target.value); });

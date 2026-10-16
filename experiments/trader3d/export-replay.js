@@ -21,7 +21,7 @@ var common = require(EXP + '/lib/trade-common.js');
 var CFG_FILE = path.join(EXP, 'config', 'trade-stonkfly-window-fixed1pct.json');
 var REPS = [11, 0, 14];   // median, best, worst P&L among the 30 saved repeats
 var OUT = path.join(__dirname, 'data');
-var N_BRAIN = 14000, N_EYE = 1000, SEED = 20261016;
+var N_BRAIN = 40000, N_EYE = 1000, SEED = 20261016;
 
 function subsetFor(brain) {
 	// fixed display subset in ORIGINAL neuron order (= row of neuron_positions.bin)
@@ -62,19 +62,21 @@ function runRep(rep) {
 		brain.reset(); brain.setWeightScale(tcfg.weightScale || 1); brain.setNoise(tcfg.noise.rate, tcfg.noise.amplitude, rng);
 		for (var t = 0; t < tcfg.warmupTicks; t++) brain.step();
 		brain.setSideStimulus(tcfg.stimulus ? { groups: tcfg.stimulus.groups, left: tcfg.stimulus.left, right: tcfg.stimulus.right, balance: true, rng: makeRng(seed ^ 0x5bd1e995) } : null);
-		var sL = 0, sR = 0, total = 0, ticks = [];
+		var sL = 0, sR = 0, total = 0, ticks = [], tickTotals = [];
 		for (var t = 0; t < tcfg.windowTicks; t++) {
 			var fired = brain.step(), f = [];
 			for (var k = 0; k < out.left.length; k++) sL += fired[out.left[k]];
 			for (var k = 0; k < out.right.length; k++) sR += fired[out.right[k]];
-			for (var i = 0; i < brain.N; i++) if (fired[i]) { total++; if (toSub[i] >= 0) f.push(toSub[i]); }
+			var tt = 0;
+			for (var i = 0; i < brain.N; i++) if (fired[i]) { tt++; if (toSub[i] >= 0) f.push(toSub[i]); }
+			total += tt; tickTotals.push(tt);
 			ticks.push(f);
 		}
 		var rL = sL / out.left.length, rR = sR / out.right.length, d = rL + rR > 0 ? (rL - rR) / (rL + rR) : 0;
 		var choice = sL + sR < tcfg.readout.minSpikes || Math.abs(d) < tcfg.readout.margin ? 'none' : (d > 0 ? 'left' : 'right');
 		var want = saved.decisions[j];
 		if (choice !== want.choice || sL !== want.spikesL || sR !== want.spikesR) throw new Error('rep ' + rep + ' decision ' + j + ' does not reproduce the saved run');
-		decisions.push({ ret: p.ret, intensity: common.intensityFor(cfg, p.ret, fullScale), eye: common.eyeFor(cfg, p.ret), spikesL: sL, spikesR: sR, d: d, choice: choice, action: want.action, totalSpikes: total });
+		decisions.push({ ret: p.ret, intensity: common.intensityFor(cfg, p.ret, fullScale), eye: common.eyeFor(cfg, p.ret), spikesL: sL, spikesR: sR, d: d, choice: choice, action: want.action, totalSpikes: total, tickTotals: tickTotals });
 		// encode: per tick count then indices, all Uint16
 		var flat = [];
 		ticks.forEach(function (f) { flat.push(f.length); Array.prototype.push.apply(flat, f); });
@@ -106,7 +108,7 @@ function writeMeta() {
 	var brain = new HeadlessBrain(), sub = subsetFor(brain);
 	var raw = fs.readFileSync(path.join(EXP, '..', 'data', 'neuron_positions.bin'));
 	var N = brain.N, pos = new Uint16Array(raw.buffer, raw.byteOffset, N * 3);
-	var sp = new Uint16Array(sub.list.length * 3);
+	var sp = new Uint16Array(sub.list.length * 3), cls = Array.prototype.slice.call(raw.subarray(N * 6, N * 7));
 	sub.list.forEach(function (o, i) { sp[i * 3] = pos[o * 3]; sp[i * 3 + 1] = pos[o * 3 + 1]; sp[i * 3 + 2] = pos[o * 3 + 2]; });
 	// 15-minute candles from the 1-minute bars
 	// market.loadPrices keeps only close, so read open/high/low/volume from the CSV itself
@@ -141,7 +143,7 @@ function writeMeta() {
 	var meanAll = fins.reduce(function (a, b) { return a + b; }, 0) / fins.length;
 	var meta = {
 		source: 'experiments/config/trade-stonkfly-window-fixed1pct.json (weightScale 20, VIS_R1R6, descending readout)',
-		rules: R, nNeurons: N, subsetSize: sub.list.length, positionsU16: Buffer.from(sp.buffer).toString('base64'), role: sub.role,
+		rules: R, nNeurons: N, subsetSize: sub.list.length, positionsU16: Buffer.from(sp.buffer).toString('base64'), role: sub.role, cls: sub.list.map(function (o) { return cls[o]; }),
 		candles: candles, points: points.map(function (p) { return { t: p.t, price: p.price, ret: p.ret }; }), finalPrice: finalPrice,
 		reps: reps, rule: rule,
 		random: { n: n, meanPath: Array.from(mean), finalMean: meanAll, p05: q(0.05), p50: q(0.5), p95: q(0.95), shareGe1: fins.filter(function (v) { return v >= 1; }).length / n }

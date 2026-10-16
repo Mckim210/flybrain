@@ -91,6 +91,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--neuron); o
       <button id="play" type="button">▶ 재생</button>
       <select id="speed" aria-label="재생 속도"><option value="1">속도 1×</option><option value="2">속도 2×</option><option value="4">속도 4×</option></select>
       <select id="rep" aria-label="회차"></select>
+      <button id="focus" type="button" aria-pressed="false">뇌 확대</button>
       <button id="restart" type="button">처음부터</button>
       <button id="infoBtn" type="button" aria-expanded="false">이게 뭔가요?</button>
     </div>
@@ -119,7 +120,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--neuron); o
     <div class="final" id="final">재생하면 결정마다 손익이 바뀝니다.</div>
   </section>
 
-  <div class="note panel" id="note">드래그해서 돌려 보세요. 연결 강도는 실험용으로 20배 키운 설정이에요. 숫자는 모두 저장된 시뮬레이션 기록과 실제 시세에서 나옵니다.</div>
+  <div class="note panel" id="note">드래그해서 돌려 보세요. 연결 강도는 실험용으로 20배 키운 설정이에요. 뇌의 점 하나하나가 실제 FlyWire 뉴런 위치이고, 기록된 시뮬레이션에서 발화한 틱에만 빛납니다.</div>
 </div>
 
 <div id="info" hidden>
