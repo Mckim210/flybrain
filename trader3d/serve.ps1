@@ -1,6 +1,7 @@
 # serve.ps1 - tiny local web server for FlyBrain Trader (Windows PowerShell, no install needed)
-# Serves this folder at http://localhost:8765/ and opens the browser. Close the window to stop.
-$root = Split-Path -Parent $MyInvocation.MyCommand.Path
+# Serves the repository at http://localhost:8765/ and opens trader3d/. Close the window to stop.
+# serve the repository folder (one level up) so the page can reach ../js/sim-worker.js and ../data for live mode
+$root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $port = 8765
 $prefix = "http://localhost:$port/"
 $listener = New-Object System.Net.HttpListener
@@ -12,10 +13,10 @@ try { $listener.Start() } catch {
   exit 1
 }
 Write-Host ""
-Write-Host "  FlyBrain Trader is running at $prefix"
+Write-Host "  FlyBrain Trader is running at ${prefix}trader3d/"
 Write-Host "  Keep this window open while you use it. Close it to stop."
 Write-Host ""
-Start-Process $prefix
+Start-Process ($prefix + "trader3d/")
 $mime = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript; charset=utf-8'; '.json'='application/json; charset=utf-8';
   '.txt'='text/plain; charset=utf-8'; '.css'='text/css; charset=utf-8'; '.png'='image/png'; '.svg'='image/svg+xml';
   '.gz'='application/gzip'; '.bin'='application/octet-stream'; '.md'='text/plain; charset=utf-8' }
@@ -25,7 +26,8 @@ while ($listener.IsListening) {
     $ctx = $listener.GetContext()
     $res = $ctx.Response
     $path = [Uri]::UnescapeDataString($ctx.Request.Url.AbsolutePath)
-    if ($path -eq '/') { $path = '/index.html' }
+    if ($path -eq '/') { $path = '/trader3d/index.html' }
+    if ($path.EndsWith('/')) { $path = $path + 'index.html' }
     $file = [IO.Path]::GetFullPath((Join-Path $root $path.TrimStart('/')))
     if ($file.StartsWith($root) -and (Test-Path -LiteralPath $file -PathType Leaf)) {
       $bytes = [IO.File]::ReadAllBytes($file)

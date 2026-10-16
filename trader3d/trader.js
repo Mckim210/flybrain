@@ -232,48 +232,60 @@ function start(meta) {
 
 	/* ---------- monitor drawing (real candles and the fly's real orders) ---------- */
 	var DEC_CANDLE = P.map(function (_, k) { return 4 * (k + 1); });   // decision k closes minute 60(k+1) -> 15-min candle 4(k+1)
-	function drawMonitor(st) {
-		var g = mcv.getContext('2d'), shown = C.slice(0, st.candle + 1), last = shown[shown.length - 1];
+	// replay view model: 15-minute candles of the recorded window, axis fixed to the whole window
+	function replayVM(st) {
+		var marks = [], logs = [];
+		for (var k = 0; k < st.decided; k++) { var done = st.wallet[k].done; if (done === 'hold') continue;
+			marks.push({ i: DEC_CANDLE[k], done: done, latest: k === st.decided - 1 && st.phase === 'act' }); logs.push({ done: done, label: hhmm(P[k].t).slice(6), price: P[k].price }); }
+		var w0 = st.decided ? st.wallet[st.decided - 1] : { cash: R.capital, btc: 0 };
+		return { candles: C.slice(0, st.candle + 1), slots: C.length, range: C, marks: marks, logs: logs, interval: '15m', timeLabel: '시각 (UTC)',
+			time: hhmm(C[st.candle][0] + 900), act: st.phase === 'act' ? st.cur.executed : null, note: st.phase === 'act' ? st.cur.note : '', wallet: w0, live: false, footer: '', axisLabel: function (c) { return hhmm(c[0]).slice(6); } };
+	}
+	function drawMonitor(st) { drawMonitorVM(replayVM(st)); }
+	function drawMonitorVM(vm) {
+		var g = mcv.getContext('2d'), shown = vm.candles, last = shown[shown.length - 1];
 		g.fillStyle = '#0a0e18'; g.fillRect(0, 0, MW, MH);
 		g.fillStyle = '#0f1524'; g.fillRect(0, 0, MW, 64);
 		g.fillStyle = COL.amber; g.font = 'bold 30px sans-serif'; g.fillText('◆ FLYX', 24, 43);
 		g.fillStyle = COL.ink; g.font = 'bold 28px sans-serif'; g.fillText('BTC-USD', 170, 43);
-		var chg = last[4] / C[0][1] - 1; g.fillStyle = chg >= 0 ? COL.up : COL.down; g.font = 'bold 30px monospace'; g.fillText('$' + last[4].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 330, 44);
+		if (!last) { g.fillStyle = '#8b95aa'; g.font = '26px sans-serif'; g.fillText(vm.footer || '시세를 기다리는 중', 24, 140); mtex.needsUpdate = true; return; }
+		var chg = last[4] / shown[0][1] - 1; g.fillStyle = chg >= 0 ? COL.up : COL.down; g.font = 'bold 30px monospace'; g.fillText('$' + last[4].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 330, 44);
+		if (vm.live) { g.fillStyle = COL.down; g.beginPath(); g.arc(590, 34, 9, 0, 7); g.fill(); g.font = 'bold 20px sans-serif'; g.fillText('LIVE', 606, 41); }
 		var hi = Math.max.apply(null, shown.map(function (c) { return c[2]; })), lo = Math.min.apply(null, shown.map(function (c) { return c[3]; }));
-		var vol = shown.reduce(function (s, c) { return s + c[5]; }, 0);
-		[['변동', pct(chg)], ['고가', hi.toFixed(0)], ['저가', lo.toFixed(0)], ['거래량', vol.toFixed(1) + ' BTC'], ['시각 (UTC)', hhmm(last[0] + 900)]].forEach(function (t, i) { g.font = '20px sans-serif'; g.fillStyle = '#6f7a92'; g.fillText(t[0], 640 + i * 180, 28); g.fillStyle = i === 0 ? (chg >= 0 ? COL.up : COL.down) : '#d6dbe6'; g.fillText(t[1], 640 + i * 180, 52); });
-		g.font = '18px sans-serif'; ['1m', '5m', '15m', '1h'].forEach(function (t, i) { g.fillStyle = t === '15m' ? COL.amber : '#6f7a92'; g.fillText(t, 28 + i * 52, 96); });
+		var vol = shown.reduce(function (s, c) { return s + (c[5] || 0); }, 0);
+		[['변동', pct(chg)], ['고가', hi.toFixed(0)], ['저가', lo.toFixed(0)], ['거래량', vol > 0 ? vol.toFixed(1) + ' BTC' : '—'], [vm.timeLabel, vm.time]].forEach(function (t, i) { g.font = '20px sans-serif'; g.fillStyle = '#6f7a92'; g.fillText(t[0], 700 + i * 170, 28); g.fillStyle = i === 0 ? (chg >= 0 ? COL.up : COL.down) : '#d6dbe6'; g.fillText(t[1], 700 + i * 170, 52); });
+		g.font = '18px sans-serif'; ['1m', '5m', '15m', '1h'].forEach(function (t, i) { g.fillStyle = t === vm.interval ? COL.amber : '#6f7a92'; g.fillText(t, 28 + i * 52, 96); });
 		var X0 = 24, X1 = 1090, Y0 = 112, Y1 = 600, VY0 = 618, VY1 = 720;
-		var pmin = Math.min.apply(null, C.map(function (c) { return c[3]; })) - 120, pmax = Math.max.apply(null, C.map(function (c) { return c[2]; })) + 120;
+		var pmin = Math.min.apply(null, vm.range.map(function (c) { return c[3]; })), pmax = Math.max.apply(null, vm.range.map(function (c) { return c[2]; }));
+		var pad = Math.max(20, (pmax - pmin) * 0.08); pmin -= pad; pmax += pad;
 		var py = function (v) { return Y0 + (pmax - v) / (pmax - pmin) * (Y1 - Y0); };
-		var N = C.length, cw = (X1 - X0) / N, px = function (i) { return X0 + i * cw + cw / 2; };
+		var N = vm.slots, cw = (X1 - X0) / N, px = function (i) { return X0 + i * cw + cw / 2; };
+		var stepV = [10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000].filter(function (s) { return (pmax - pmin) / s <= 9; })[0] || 5000;
 		g.strokeStyle = '#161e30'; g.lineWidth = 1; g.font = '16px monospace';
-		for (var v = Math.ceil(pmin / 500) * 500; v <= pmax; v += 500) { var yy = py(v); g.beginPath(); g.moveTo(X0, yy); g.lineTo(X1, yy); g.stroke(); g.fillStyle = '#5d6880'; g.fillText(v.toLocaleString('en-US'), X1 + 6, yy + 5); }
-		for (var ii = 0; ii < N; ii += 16) { g.beginPath(); g.moveTo(px(ii), Y0); g.lineTo(px(ii), VY1); g.stroke(); g.fillStyle = '#5d6880'; g.fillText(hhmm(C[ii][0]).slice(6), px(ii) - 22, VY1 + 22); }
-		var vmax = Math.max.apply(null, C.map(function (c) { return c[5]; }));
+		for (var v = Math.ceil(pmin / stepV) * stepV; v <= pmax; v += stepV) { var yy = py(v); g.beginPath(); g.moveTo(X0, yy); g.lineTo(X1, yy); g.stroke(); g.fillStyle = '#5d6880'; g.fillText(v.toLocaleString('en-US'), X1 + 6, yy + 5); }
+		for (var ii = 0; ii < shown.length; ii += Math.max(1, Math.round(N / 7))) { g.beginPath(); g.moveTo(px(ii), Y0); g.lineTo(px(ii), VY1); g.stroke(); g.fillStyle = '#5d6880'; g.fillText(vm.axisLabel(shown[ii]), px(ii) - 22, VY1 + 22); }
+		var vmax = Math.max.apply(null, vm.range.map(function (c) { return c[5] || 0; })) || 1;
 		shown.forEach(function (c, i) { var col = c[4] >= c[1] ? COL.up : COL.down; g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 1.5;
 			g.beginPath(); g.moveTo(px(i), py(c[2])); g.lineTo(px(i), py(c[3])); g.stroke();
 			var t = py(Math.max(c[1], c[4])), b = py(Math.min(c[1], c[4])); g.fillRect(px(i) - cw * 0.36, t, cw * 0.72, Math.max(1.5, b - t));
-			g.globalAlpha = 0.45; var vh = c[5] / vmax * (VY1 - VY0); g.fillRect(px(i) - cw * 0.36, VY1 - vh, cw * 0.72, vh); g.globalAlpha = 1; });
+			if (c[5]) { g.globalAlpha = 0.45; var vh = c[5] / vmax * (VY1 - VY0); g.fillRect(px(i) - cw * 0.36, VY1 - vh, cw * 0.72, vh); g.globalAlpha = 1; } });
+		if (vol <= 0) { g.fillStyle = '#5d6880'; g.font = '16px sans-serif'; g.fillText('거래량: 이 시세 API는 거래량을 주지 않아요', X0 + 6, VY1 - 8); }
 		g.strokeStyle = COL.amber; g.lineWidth = 2; g.beginPath();
 		shown.forEach(function (c, i) { if (i < 19) return; var m = 0; for (var j = i - 19; j <= i; j++) m += shown[j][4]; m /= 20; if (i === 19) g.moveTo(px(i), py(m)); else g.lineTo(px(i), py(m)); }); g.stroke();
 		g.fillStyle = COL.amber; g.font = '16px sans-serif'; g.fillText('MA20', X0 + 6, Y0 + 18);
 		var lc = chg >= 0 ? COL.up : COL.down; g.setLineDash([6, 6]); g.strokeStyle = lc; g.beginPath(); g.moveTo(X0, py(last[4])); g.lineTo(X1, py(last[4])); g.stroke(); g.setLineDash([]);
 		g.fillStyle = lc; g.fillRect(X1 + 2, py(last[4]) - 14, 96, 28); g.fillStyle = '#04120a'; g.font = 'bold 17px monospace'; g.fillText(last[4].toFixed(0), X1 + 10, py(last[4]) + 6);
-		// the fly's executed orders so far
-		for (var k = 0; k < st.decided; k++) { var done = st.wallet[k].done; if (done === 'hold') continue; var cc = C[DEC_CANDLE[k]] || last, x = px(DEC_CANDLE[k]);
-			var y = done === 'buy' ? py(cc[3]) + 22 : py(cc[2]) - 22; g.fillStyle = done === 'buy' ? COL.up : COL.down; g.beginPath(); g.arc(x, y, 14, 0, 7); g.fill();
-			g.fillStyle = '#071008'; g.font = 'bold 16px sans-serif'; g.fillText(done === 'buy' ? 'B' : 'S', x - 6, y + 6);
-			if (k === st.decided - 1 && st.phase === 'act') { g.strokeStyle = g.fillStyle = done === 'buy' ? COL.up : COL.down; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 22, 0, 7); g.stroke(); } }
+		vm.marks.forEach(function (m) { if (m.i < 0 || m.i >= shown.length) return; var cc = shown[m.i], x = px(m.i);
+			var y = m.done === 'buy' ? py(cc[3]) + 22 : py(cc[2]) - 22; g.fillStyle = m.done === 'buy' ? COL.up : COL.down; g.beginPath(); g.arc(x, y, 14, 0, 7); g.fill();
+			g.fillStyle = '#071008'; g.font = 'bold 16px sans-serif'; g.fillText(m.done === 'buy' ? 'B' : 'S', x - 6, y + 6);
+			if (m.latest) { g.strokeStyle = m.done === 'buy' ? COL.up : COL.down; g.lineWidth = 3; g.beginPath(); g.arc(x, y, 22, 0, 7); g.stroke(); } });
 		g.fillStyle = '#8b95aa'; g.font = '16px sans-serif'; g.fillText('B/S = 초파리 뇌가 낸 주문', X0 + 80, Y0 + 18);
-		// right column: the fly's order log and the order ticket
 		var OX = 1180; g.fillStyle = '#0f1524'; g.fillRect(OX - 10, 72, MW - OX + 10, MH - 72);
 		g.fillStyle = '#8b95aa'; g.font = '18px sans-serif'; g.fillText('초파리 주문 기록', OX + 6, 102);
-		var logs = []; for (var k2 = 0; k2 < st.decided; k2++) if (st.wallet[k2].done !== 'hold') logs.push(k2);
-		logs.slice(-9).reverse().forEach(function (k3, r) { var w = st.wallet[k3], yy2 = 140 + r * 34; g.fillStyle = w.done === 'buy' ? COL.up : COL.down; g.font = 'bold 19px sans-serif'; g.fillText(w.done === 'buy' ? '매수' : '매도', OX + 6, yy2);
-			g.fillStyle = '#c7cdd9'; g.font = '18px monospace'; g.fillText(hhmm(P[k3].t).slice(6) + '  $' + P[k3].price.toFixed(0), OX + 70, yy2); });
-		if (!logs.length) { g.fillStyle = '#5d6880'; g.font = '17px sans-serif'; g.fillText('아직 주문 없음', OX + 6, 140); }
-		var TY = 470, act = st.phase === 'act' ? st.cur.executed : null;
+		vm.logs.slice(-9).reverse().forEach(function (lg, r) { var yy2 = 140 + r * 34; g.fillStyle = lg.done === 'buy' ? COL.up : COL.down; g.font = 'bold 19px sans-serif'; g.fillText(lg.done === 'buy' ? '매수' : '매도', OX + 6, yy2);
+			g.fillStyle = '#c7cdd9'; g.font = '18px monospace'; g.fillText(lg.label + '  $' + lg.price.toFixed(0), OX + 70, yy2); });
+		if (!vm.logs.length) { g.fillStyle = '#5d6880'; g.font = '17px sans-serif'; g.fillText('아직 주문 없음', OX + 6, 140); }
+		var TY = 470, act = vm.act;
 		g.fillStyle = '#0a0e18'; g.fillRect(OX, TY, MW - OX - 20, 40); g.fillStyle = '#c7cdd9'; g.font = '19px sans-serif'; g.fillText('주문 금액  $10.00  (수수료 0.6%)', OX + 12, TY + 27);
 		[['buy', 'BTC 매수', COL.up, TY + 56], ['sell', 'BTC 매도', COL.down, TY + 132]].forEach(function (bt) {
 			var on = act === bt[0]; if (on) { g.shadowColor = bt[2]; g.shadowBlur = 30; }
@@ -281,9 +293,9 @@ function start(meta) {
 			g.fillStyle = on ? '#04120a' : bt[2]; g.font = 'bold 28px sans-serif'; g.fillText(bt[1], OX + 120, bt[3] + 41);
 			if (on) { var cxp = OX + 310, cyp = bt[3] + 40; g.fillStyle = '#fff'; g.beginPath(); g.moveTo(cxp, cyp); g.lineTo(cxp, cyp + 30); g.lineTo(cxp + 8, cyp + 23); g.lineTo(cxp + 15, cyp + 36); g.lineTo(cxp + 20, cyp + 33); g.lineTo(cxp + 13, cyp + 21); g.lineTo(cxp + 23, cyp + 21); g.closePath(); g.fill(); }
 		});
-		if (st.phase === 'act' && st.cur.executed === 'hold') { g.fillStyle = '#c7cdd9'; g.font = 'bold 24px sans-serif'; g.fillText(st.cur.note, OX + 10, TY + 236); }
-		var w0 = st.decided ? st.wallet[st.decided - 1] : { cash: R.capital, btc: 0 }, valNow = w0.cash + w0.btc * last[4];
-		g.fillStyle = '#8b95aa'; g.font = '18px sans-serif'; g.fillText('지갑  현금 $' + w0.cash.toFixed(2) + '  ·  BTC ' + w0.btc.toFixed(6) + '  ·  평가액 $' + valNow.toFixed(2), 24, MH - 24);
+		if (act === 'hold' && vm.note) { g.fillStyle = '#c7cdd9'; g.font = 'bold 22px sans-serif'; g.fillText(vm.note, OX + 10, TY + 236, MW - OX - 30); }
+		var valNow = vm.wallet.cash + vm.wallet.btc * last[4];
+		g.fillStyle = '#8b95aa'; g.font = '18px sans-serif'; g.fillText('지갑  현금 $' + vm.wallet.cash.toFixed(2) + '  ·  BTC ' + vm.wallet.btc.toFixed(6) + '  ·  평가액 $' + valNow.toFixed(2) + (vm.footer ? '   ·   ' + vm.footer : ''), 24, MH - 24, MW - 48);
 		mtex.needsUpdate = true;
 	}
 
@@ -310,6 +322,7 @@ function start(meta) {
 	function clearRaster() { rctx.fillStyle = '#0a1020'; rctx.fillRect(0, 0, 740, 112); rctx.strokeStyle = '#26304a'; rctx.beginPath(); rctx.moveTo(0, 56); rctx.lineTo(740, 56); rctx.stroke(); }
 	function rasterTick(t, l, r) { var x = t * 14.6 + 3; rctx.fillStyle = COL.up; rctx.fillRect(x, 56 - Math.min(52, l * 4), 10, Math.min(52, l * 4)); rctx.fillStyle = COL.down; rctx.fillRect(x, 57, 10, Math.min(52, r * 4)); }
 	function updatePnl() {
+		if (MODE !== 'replay') { if (LV) livePnl(); return; }
 		var k = st.decided - 1, fin = st.done;
 		var f = fin ? st.info.equity.final : (k >= 0 ? st.info.equity.path[k] : 0);
 		var ru = fin ? meta.rule.final : (k >= 0 ? meta.rule.path[k] : 0);
@@ -383,15 +396,155 @@ function start(meta) {
 		}
 	}
 
+	/* ---------- live mode: real Coinbase price + the brain computed in this browser ---------- */
+	// Only works when the page is opened from this computer (START.bat): the artifact page blocks other sites.
+	var MODE = 'replay', LV = null;
+	var LIVE_SET = { live60: { every: 60, fullScale: 0.01, label: '1시간마다 결정 (소논문 설정, 1% 움직이면 최대 자극)' },
+		live1: { every: 1, fullScale: 0.001, label: '1분마다 결정 (데모, 0.1% 움직이면 최대 자극 · 소논문 설정 아님)' } };
+	var SPOT = 'https://api.coinbase.com/v2/prices/BTC-USD/spot', HIST = 'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60';
+	var RANDOM_N = 1000;
+	function canGoLive() { return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname); }
+	function nowMin() { return Math.floor(Date.now() / 60000); }
+	function kst(tSec) { return new Date(tSec * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }); }
+	function setNote(html) { $('note').innerHTML = html; }
+	function emptyBook() { return { cash: R.capital, btc: 0, fees: 0, orders: 0, perDay: {} }; }
+	function trade(b, a, price, tSec) {   // same order rules as experiments/lib/market.js
+		var day = new Date(tSec * 1000).toISOString().slice(0, 10), reserve = R.capital * R.reserveRate, done = 'hold';
+		if ((a === 'buy' || a === 'sell') && (b.perDay[day] || 0) < R.maxOrdersPerDay) {
+			if (a === 'buy') { var usd = Math.min(R.orderUsd, (b.cash - reserve) / (1 + R.feeRate)); if (usd > 0.005) { b.cash -= usd * (1 + R.feeRate); b.fees += usd * R.feeRate; b.btc += usd / price; done = 'buy'; } }
+			else { var u2 = Math.min(R.orderUsd, b.btc * price); if (u2 > 0.005) { b.btc -= u2 / price; if (b.btc < 1e-15) b.btc = 0; b.cash += u2 * (1 - R.feeRate); b.fees += u2 * R.feeRate; done = 'sell'; } }
+			if (done !== 'hold') { b.perDay[day] = (b.perDay[day] || 0) + 1; b.orders++; }
+		}
+		return done;
+	}
+	function value(b, price) { return b.cash + b.btc * price - R.capital; }
+
+	function liveStart(kind) {
+		if (!canGoLive()) {
+			setNote('<b>실시간 모드는 내 컴퓨터에서 열었을 때만 동작해요.</b> 이 페이지에서는 보안 규칙 때문에 거래소 시세와 뇌 데이터에 접속할 수 없습니다. 받은 압축 파일의 START.bat으로 열어 주세요.');
+			$('mode').value = 'replay'; return;
+		}
+		playing = false; MODE = kind; document.body.classList.add('is-live');
+		var cfg = LIVE_SET[kind];
+		LV = { kind: kind, cfg: cfg, candles: {}, lastDecMin: null, decisions: [], fly: emptyBook(), rule: emptyBook(), rnd: [], phase: 'idle', t: 0, tick: 0, cur: null,
+			worker: null, ready: false, lastFetch: 0, lastOk: null, err: null, started: Date.now() / 1000, pending: null };
+		for (var i = 0; i < RANDOM_N; i++) LV.rnd.push(emptyBook());
+		glow.fill(0); paintBrain(); setDN(0, 0); clearRaster();
+		$('decTitle').textContent = '실시간 · ' + cfg.label; $('ret').textContent = '—'; $('stim').textContent = '—'; $('dval').textContent = '—';
+		setVerdict('준비 중', '뇌 데이터와 시세를 불러옵니다', COL.neuron); setReadout('실시간 모드 준비 중', COL.neuron);
+		$('play').textContent = '■ 실시간 정지'; $('retLabel').textContent = cfg.every === 1 ? '직전 1분' : '직전 1시간'; $('randMeta').textContent = '매수·매도·보유 1/3씩, ' + RANDOM_N.toLocaleString() + '명 (지금부터)';
+		setNote('실시간 모드: 코인베이스 BTC-USD 현재가를 5초마다 받아 1분봉을 만들고, ' + cfg.label + '. 뇌는 이 컴퓨터에서 직접 계산합니다. 실제 돈은 쓰지 않는 모의 거래예요.');
+		var w = new Worker('brain-worker.js'); LV.worker = w;
+		w.onmessage = function (e) { var m = e.data; if (!LV || LV.worker !== w) return;
+			if (m.type === 'progress') setReadout(m.stage, COL.neuron);
+			else if (m.type === 'ready') { LV.ready = true; setReadout('뇌 준비 완료 · 다음 결정을 기다리는 중', COL.neuron); setVerdict('대기 중', '다음 결정 시각을 기다립니다', COL.ink); }
+			else if (m.type === 'decision') liveGotDecision(m);
+			else if (m.type === 'error') { LV.err = m.message; setVerdict('뇌 오류', m.message, COL.down); } };
+		w.postMessage({ type: 'init' });
+		fetch(HIST, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (rows) {
+			rows.forEach(function (c) { LV.candles[Math.floor(c[0] / 60)] = [c[0], c[3], c[2], c[1], c[4], c[5]]; });   // [time, low, high, open, close, vol] -> [t,o,h,l,c,v]
+			LV.histOk = true; liveDraw();
+		}).catch(function () { LV.histOk = false; });
+		livePoll(); liveDraw(); updatePnl();
+	}
+	function liveStop() {
+		if (LV && LV.worker) LV.worker.terminate();
+		LV = null; MODE = 'replay'; document.body.classList.remove('is-live'); $('mode').value = 'replay';
+		setNote('드래그해서 돌려 보세요. 연결 강도는 실험용으로 20배 키운 설정이에요. 뇌의 점 하나하나가 실제 FlyWire 뉴런 위치이고, 기록된 시뮬레이션에서 발화한 틱에만 빛납니다.');
+		$('play').textContent = '▶ 재생'; $('retLabel').textContent = '직전 1시간'; $('randMeta').textContent = '매수·매도·보유 1/3씩, 1만 명'; reset(st.rep);
+	}
+	function livePoll() {
+		if (!LV) return; LV.lastFetch = Date.now();
+		fetch(SPOT, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) {
+			var p = parseFloat(j.data.amount), m = nowMin(); if (!(p > 0)) throw new Error('가격 없음');
+			var c = LV.candles[m]; if (!c) LV.candles[m] = [m * 60, p, p, p, p, 0]; else { c[2] = Math.max(c[2], p); c[3] = Math.min(c[3], p); c[4] = p; }
+			LV.lastOk = Date.now(); LV.err = null; liveDraw();
+		}).catch(function (e) { LV.err = '시세를 못 받았어요 (' + e.message + '). 인터넷 연결을 확인해 주세요.'; liveDraw(); });
+	}
+	function liveSeries(n) { var m = nowMin(), out = []; for (var k = m - n + 1; k <= m; k++) if (LV.candles[k]) out.push(LV.candles[k]); return out; }
+	function liveDraw() {
+		if (!LV) return;
+		var shown = liveSeries(120), t0 = shown.length ? shown[0][0] : 0, slot = function (tSec) { return Math.round((tSec - t0) / 60); };
+		var marks = [], logs = [];
+		LV.decisions.forEach(function (d, k) { if (d.executed === 'hold') return; marks.push({ i: slot(d.minuteStart), done: d.executed, latest: k === LV.decisions.length - 1 && LV.phase === 'act' }); logs.push({ done: d.executed, label: kst(d.t), price: d.price }); });
+		var status = LV.err ? LV.err : (LV.lastOk ? '현재가 ' + Math.round((Date.now() - LV.lastOk) / 1000) + '초 전 갱신 · 다음 결정 ' + liveCountdown() : '시세 연결 중…');
+		drawMonitorVM({ candles: shown, slots: 120, range: shown.length ? shown : [[0, 0, 1, 0, 0, 0]], marks: marks, logs: logs, interval: '1m', timeLabel: '시각 (한국)',
+			time: kst(Date.now() / 1000), act: LV.phase === 'act' && LV.cur ? LV.cur.executed : null, note: LV.cur ? LV.cur.note : '', wallet: LV.fly, live: true, footer: status,
+			axisLabel: function (c) { return kst(c[0]); } });
+	}
+	function liveCountdown() { var every = LV.cfg.every, m = nowMin(), next = (Math.floor(m / every) + 1) * every, s = next * 60 - Date.now() / 1000; return Math.floor(s / 60) + '분 ' + String(Math.floor(s % 60)).padStart(2, '0') + '초 뒤'; }
+	function liveMaybeDecide() {
+		if (!LV || !LV.ready || LV.phase !== 'idle') return;
+		var m = nowMin(), every = LV.cfg.every;
+		if (m % every !== 0 || LV.lastDecMin === m) return;
+		var a = LV.candles[m - 1], b = LV.candles[m - 1 - every];
+		LV.lastDecMin = m;
+		if (!a || !b) { setVerdict('결정 건너뜀', every === 60 ? '1시간 전 시세가 없어요 (과거 시세를 못 받았거나 켠 지 1시간이 안 됨)' : '1분 전 시세가 아직 없어요', COL.dim); return; }
+		var ret = a[4] / b[4] - 1, inten = Math.min(1, Math.abs(ret) / LV.cfg.fullScale), eye = ret > 0 ? 'left' : (ret < 0 ? 'right' : null);
+		var seed = (crypto.getRandomValues(new Uint32Array(1))[0]) >>> 0;
+		LV.cur = { minuteStart: (m - 1) * 60, t: m * 60, price: a[4], ret: ret, intensity: eye ? inten : 0, eye: eye, seed: seed, l: 0, r: 0 };
+		LV.phase = 'stim'; LV.t = 0;
+		$('decTitle').textContent = '실시간 결정 ' + (LV.decisions.length + 1) + ' · ' + kst(m * 60) + ' (한국 시각)';
+		$('ret').textContent = pct(ret); $('ret').style.color = ret >= 0 ? COL.up : COL.down;
+		$('stim').textContent = eye && inten > 0 ? (eye === 'left' ? '왼쪽 눈 ' : '오른쪽 눈 ') + inten.toFixed(2) : '자극 없음';
+		$('dval').textContent = '…'; setDN(0, 0); clearRaster(); setVerdict('뇌 계산 중', '이 컴퓨터에서 50틱을 계산합니다', COL.neuron);
+		setReadout(eye ? (eye === 'left' ? '왼쪽' : '오른쪽') + ' 눈 자극 · 세기 ' + inten.toFixed(2) : '자극 없음 · 잡음만', COL.neuron);
+		if (eye && inten > 0) { aimBeam(eye); beam.material.opacity = 0.9; }
+		LV.worker.postMessage({ type: 'decide', id: LV.decisions.length, intensity: LV.cur.intensity, eye: eye, seed: seed });
+	}
+	function liveGotDecision(m) { if (!LV || !LV.cur) return; LV.cur.res = m; }
+	function liveStep(dt) {
+		if (!LV) return;
+		if (Date.now() - LV.lastFetch > 5000) livePoll();
+		LV.t += dt;
+		if (LV.phase === 'idle') { if (LV.t > 1) { LV.t = 0; liveDraw(); } liveMaybeDecide(); }
+		else if (LV.phase === 'stim') { beam.material.opacity = 0.5 + 0.4 * Math.sin(LV.t * 18); if (LV.t >= 0.8 && LV.cur.res) { LV.phase = 'ticks'; LV.t = 0; LV.tick = 0; } }
+		else if (LV.phase === 'ticks') {
+			while (LV.t >= 0.045 && LV.tick < 50) { LV.t -= 0.045; var f = LV.cur.res.ticks[LV.tick], l = 0, r = 0;
+				for (var i = 0; i < f.length; i++) { var a = f[i]; glow[a] = 1; if (isL[a]) l++; else if (isR[a]) r++; }
+				LV.cur.l += l; LV.cur.r += r; setDN(LV.cur.l, LV.cur.r); rasterTick(LV.tick, l, r);
+				setReadout('틱 ' + (LV.tick + 1) + '/50 · 뇌 전체 발화 ' + LV.cur.res.tickTotals[LV.tick].toLocaleString() + ' · 하행 왼 ' + LV.cur.l + ' : 오 ' + LV.cur.r, '#e9ecf5'); LV.tick++; }
+			if (LV.tick >= 50) liveFinish();
+		} else if (LV.phase === 'act') { if (LV.t >= 1.1) { LV.phase = 'idle'; LV.t = 0; turnTarget = 0; liveDraw(); } }
+	}
+	function liveFinish() {
+		var c = LV.cur, res = c.res, ex = trade(LV.fly, res.action, c.price, c.t);
+		trade(LV.rule, c.ret > 0 ? 'buy' : (c.ret < 0 ? 'sell' : 'hold'), c.price, c.t);
+		LV.rnd.forEach(function (b) { var u = Math.random(); trade(b, u < 1 / 3 ? 'buy' : (u < 2 / 3 ? 'sell' : 'hold'), c.price, c.t); });
+		c.executed = ex; c.note = res.action === 'sell' && ex === 'hold' ? '매도 신호 · 팔 BTC가 없어 주문 안 됨' : (res.action === 'buy' && ex === 'hold' ? '매수 신호 · 주문 한도로 주문 안 됨' : (res.action === 'hold' ? '좌우 차이가 작아 보유' : ''));
+		LV.decisions.push(c); LV.phase = 'act'; LV.t = 0; beam.material.opacity = 0;
+		$('dval').textContent = (res.d >= 0 ? '+' : '−') + Math.abs(res.d).toFixed(2);
+		var label = { buy: '매수 $10', sell: '매도 $10', hold: '보유' }[ex], color = ex === 'buy' ? COL.up : (ex === 'sell' ? COL.down : COL.ink);
+		setVerdict(label, c.note || ('왼 ' + res.spikesL + ' : 오 ' + res.spikesR + ' · 계산 ' + res.ms + 'ms'), color);
+		setReadout('하행 왼 ' + res.spikesL + ' : 오 ' + res.spikesR + ' · d = ' + (res.d >= 0 ? '+' : '−') + Math.abs(res.d).toFixed(2) + ' → ' + label, color);
+		turnTarget = Math.max(-1, Math.min(1, res.d)) * (ex === 'hold' ? 0.25 : 0.65);
+		var ring = fly.userData.ring; ring.material.color.set(ex === 'sell' ? 0xff5a6e : 0x2fd47c); ring.material.opacity = ex === 'hold' ? 0 : 1; ring.scale.setScalar(1);
+		updatePnl(); liveDraw();
+	}
+	function livePnl() {
+		var last = liveSeries(1)[0], price = last ? last[4] : null;
+		function show(id, v) { var el = $(id); if (v == null) { el.textContent = '—'; el.className = 'n'; return; } el.textContent = money(v); el.className = 'n ' + (v > 0.004 ? 'pos' : (v < -0.004 ? 'neg' : '')); }
+		if (!price) { ['flyPnl', 'rulePnl', 'randPnl', 'matchPnl'].forEach(function (id) { show(id, null); }); return; }
+		show('flyPnl', value(LV.fly, price)); show('rulePnl', value(LV.rule, price));
+		var sum = 0; LV.rnd.forEach(function (b) { sum += value(b, price); }); show('randPnl', sum / LV.rnd.length);
+		var same = LV.rnd.filter(function (b) { return b.orders === LV.fly.orders; });
+		if (same.length < 20) same = LV.rnd.filter(function (b) { return Math.abs(b.orders - LV.fly.orders) <= 1; });
+		var ms = 0; same.forEach(function (b) { ms += value(b, price); }); show('matchPnl', same.length ? ms / same.length : null);
+		$('flyMeta').textContent = '주문 ' + LV.fly.orders + ' · 수수료 $' + LV.fly.fees.toFixed(2);
+		$('ruleMeta').textContent = '주문 ' + LV.rule.orders + ' · 수수료 $' + LV.rule.fees.toFixed(2);
+		$('matchMeta').textContent = '주문 수가 같은 무작위 투자자 ' + same.length + '명 (전체 ' + RANDOM_N.toLocaleString() + '명 중)';
+		$('final').textContent = '실시간 결정 ' + LV.decisions.length + '번 · ' + kst(LV.started) + '부터 · 손익은 지금 시세로 평가. 결정이 적을 때 숫자 차이는 대부분 운입니다.';
+	}
+
 	/* ---------- animation ---------- */
 	var arm = fly.userData.arm, clock = new THREE.Clock(), elapsed = 0;
 	function resize() { var w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); bmat.uniforms.uScale.value = 0.016 * h * renderer.getPixelRatio(); }
 	window.addEventListener('resize', resize);
 	function frame() {
 		var dt = Math.min(0.1, clock.getDelta()); elapsed += dt;
-		if (playing) step(dt);
+		if (MODE === 'replay') { if (playing) step(dt); } else liveStep(dt);
 		var decay = Math.pow(0.86, dt * 60); for (var i = 0; i < M; i++) if (glow[i] > 0.01) glow[i] *= decay; else glow[i] = 0;
-		var busy = st && st.phase === 'ticks' ? 1 : 0; bmat.uniforms.uDim.value += ((busy ? 1.35 : 1) - bmat.uniforms.uDim.value) * Math.min(1, dt * 4); hring.material.opacity = 0.35 + 0.3 * busy * (0.5 + 0.5 * Math.sin(elapsed * 10));
+		var S = MODE === 'replay' ? st : LV; var busy = S && S.phase === 'ticks' ? 1 : 0; bmat.uniforms.uDim.value += ((busy ? 1.35 : 1) - bmat.uniforms.uDim.value) * Math.min(1, dt * 4); hring.material.opacity = 0.35 + 0.3 * busy * (0.5 + 0.5 * Math.sin(elapsed * 10));
 		var focused = view === 'brain', fogN = focused ? 5 : 16, fogF = focused ? 12 : 42; scene.fog.near += (fogN - scene.fog.near) * Math.min(1, dt * 3); scene.fog.far += (fogF - scene.fog.far) * Math.min(1, dt * 3);
 		if (camTween) { camTween.t = Math.min(1, camTween.t + dt / 0.9); var e = camTween.t * camTween.t * (3 - 2 * camTween.t); camera.position.lerpVectors(camTween.p0, camTween.p1, e); controls.target.lerpVectors(camTween.t0, camTween.t1, e); if (camTween.t >= 1) camTween = null; }
 		paintBrain();
@@ -399,7 +552,7 @@ function start(meta) {
 			wings.forEach(function (w) { w.g.rotation.z = w.s * 0.03 * Math.sin(elapsed * 2.1); });
 			holo.rotation.y = 0.25 + 0.08 * Math.sin(elapsed * 0.3);
 		}
-		var press = st && st.phase === 'act' && st.cur.executed !== 'hold' ? Math.sin(Math.min(1, st.t / 0.35) * Math.PI) : 0;
+		var press = S && S.phase === 'act' && S.cur && S.cur.executed !== 'hold' ? Math.sin(Math.min(1, S.t / 0.35) * Math.PI) : 0;
 		arm.rotation.x = 0.35 * press;
 		turn += (turnTarget - turn) * Math.min(1, dt * (reduceMotion ? 20 : 3)); fly.quaternion.copy(flyBaseQ).multiply(turnQ.setFromAxisAngle(YAXIS, turn));
 		var ring = fly.userData.ring; if (ring.material.opacity > 0) { ring.scale.multiplyScalar(1 + dt * 1.6); ring.material.opacity = Math.max(0, ring.material.opacity - dt * 0.9); }
@@ -408,6 +561,7 @@ function start(meta) {
 	}
 
 	$('play').addEventListener('click', function () {
+		if (MODE !== 'replay') { liveStop(); return; }
 		if (st.done) { reset(st.rep).then(function () { playing = true; $('play').textContent = '❚❚ 일시정지'; }); return; }
 		playing = !playing; $('play').textContent = playing ? '❚❚ 일시정지' : '▶ 재생';
 	});
@@ -422,6 +576,7 @@ function start(meta) {
 	$('focus').addEventListener('click', function () { setView(view === 'brain' ? 'home' : 'brain'); });
 	$('monitorBtn').addEventListener('click', function () { setView(view === 'monitor' ? 'home' : 'monitor'); });
 	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { labelRedraws.forEach(function (f) { f(); }); if (lastReadout[0]) setReadout(lastReadout[0], lastReadout[1]); });
+	$('mode').addEventListener('change', function (e) { var v = e.target.value; if (LV) { if (LV.worker) LV.worker.terminate(); LV = null; } if (v === 'replay') liveStop(); else liveStart(v); });
 	$('speed').addEventListener('change', function (e) { speed = +e.target.value; });
 	repSel.addEventListener('change', function (e) { playing = false; $('play').textContent = '▶ 재생'; reset(+e.target.value); });
 	$('restart').addEventListener('click', function () { playing = false; $('play').textContent = '▶ 재생'; reset(st.rep); });

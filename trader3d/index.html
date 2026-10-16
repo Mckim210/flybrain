@@ -25,6 +25,7 @@
 }
 html, body { height: 100%; }
 [hidden] { display: none !important; }
+body.is-live #rep, body.is-live #speed, body.is-live #restart { display: none; }
 body { background: var(--night); color: var(--ink); font-family: var(--body); font-size: 14px; overflow: hidden; }
 .stage { position: fixed; inset: 0; }
 #scene { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
@@ -86,9 +87,10 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--neuron); o
   <header class="top">
     <div>
       <div class="brand">FlyBrain <b>Trader</b></div>
-      <div class="sub">초파리 뇌(FlyWire 뉴런 139,255개) 시뮬레이션이 2026년 9월 10~11일 실제 비트코인 시세를 보고 사고판 기록을 다시 틀어 줍니다.</div>
+      <div class="sub">초파리 뇌(FlyWire 뉴런 139,255개) 시뮬레이션이 실제 비트코인 시세를 보고 사고팝니다. 재생 모드는 2026년 9월 10~11일 기록, 실시간 모드는 지금 시세(내 컴퓨터에서 열었을 때)입니다.</div>
     </div>
     <div class="controls">
+      <select id="mode" aria-label="모드"><option value="replay">재생 · 2026-09-10~11 기록</option><option value="live60">실시간 · 1시간마다 결정</option><option value="live1">실시간 · 1분마다 결정 (데모)</option></select>
       <button id="play" type="button">▶ 재생</button>
       <select id="speed" aria-label="재생 속도"><option value="1">속도 1×</option><option value="2">속도 2×</option><option value="4">속도 4×</option></select>
       <select id="rep" aria-label="회차"></select>
@@ -102,7 +104,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--neuron); o
   <section class="panel decision" aria-live="polite">
     <div class="label" id="decTitle">결정 대기 중</div>
     <div class="chain">
-      <div><div class="k">직전 1시간</div><div class="v" id="ret">—</div></div><div class="arrow">→</div>
+      <div><div class="k" id="retLabel">직전 1시간</div><div class="v" id="ret">—</div></div><div class="arrow">→</div>
       <div><div class="k">자극</div><div class="v" id="stim" style="color:var(--neuron)">—</div></div><div class="arrow">→</div>
       <div><div class="k">편향 d</div><div class="v" id="dval">—</div></div>
     </div>
@@ -118,7 +120,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--neuron); o
     <div class="label">같은 가격 · 같은 규칙 · 손익</div>
     <div class="row"><span><span class="dot" style="background:var(--amber)"></span>초파리 뇌<small id="flyMeta">주문 0 · 수수료 $0.00</small></span><span class="n" id="flyPnl">$0.00</span></div>
     <div class="row"><span><span class="dot" style="background:var(--violet)"></span>규칙 투자자<small id="ruleMeta">오르면 사고 내리면 팜</small></span><span class="n" id="rulePnl">$0.00</span></div>
-    <div class="row"><span><span class="dot" style="background:var(--dim)"></span>무작위 투자자 평균<small>매수·매도·보유 1/3씩, 1만 명</small></span><span class="n" id="randPnl">$0.00</span></div>
+    <div class="row"><span><span class="dot" style="background:var(--dim)"></span>무작위 투자자 평균<small id="randMeta">매수·매도·보유 1/3씩, 1만 명</small></span><span class="n" id="randPnl">$0.00</span></div>
     <div class="row"><span><span class="dot" style="background:var(--neuron)"></span>같은 주문 수 무작위 평균<small id="matchMeta">초파리와 주문 수가 같은 무작위 투자자</small></span><span class="n" id="matchPnl">끝나면 표시</span></div>
     <div class="final" id="final">재생하면 결정마다 손익이 바뀝니다.</div>
   </section>

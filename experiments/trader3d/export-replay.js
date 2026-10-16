@@ -156,6 +156,21 @@ function writeMeta() {
 	console.log('meta written; random mean', meanAll.toFixed(4), 'rule', rule.final.toFixed(4), reps.map(function (r) { return r.rep + ':' + r.equity.final.toFixed(4); }).join(' '));
 }
 
+function writeLiveMeta() {
+	// what trader3d/brain-worker.js needs to run the same decision trial in the browser (all ORIGINAL neuron indices)
+	var brain = new HeadlessBrain(), sub = subsetFor(brain);
+	function orig(list) { return list.map(function (s) { return brain.order[s]; }); }
+	var live = {
+		eyeL: orig(brain.select({ group: 'VIS_R1R6', side: 'left' })), eyeR: orig(brain.select({ group: 'VIS_R1R6', side: 'right' })),
+		dnL: orig(brain.select({ superClass: 'descending', side: 'left' })), dnR: orig(brain.select({ superClass: 'descending', side: 'right' })),
+		subset: sub.list
+	};
+	fs.mkdirSync(OUT, { recursive: true });
+	fs.writeFileSync(path.join(OUT, 'live_meta.json'), JSON.stringify(live));
+	console.log('live meta: eyes', live.eyeL.length, live.eyeR.length, 'DN', live.dnL.length, live.dnR.length, 'subset', live.subset.length);
+}
+
+if (process.argv.indexOf('--live-meta') > 0) { writeLiveMeta(); return; }
 var a = process.argv.indexOf('--rep');
 if (a > 0) runRep(+process.argv[a + 1]);
 else if (process.argv.indexOf('--meta') > 0) writeMeta();
