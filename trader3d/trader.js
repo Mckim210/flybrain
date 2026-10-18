@@ -402,7 +402,8 @@ function start(meta) {
 	var MODE = 'replay', LV = null;
 	var LIVE_SET = { live60: { every: 60, fullScale: 0.01, label: '1시간마다 결정 (소논문 설정, 1% 움직이면 최대 자극)' },
 		live1: { every: 1, fullScale: 0.001, label: '1분마다 결정 (데모, 0.1% 움직이면 최대 자극 · 소논문 설정 아님)' } };
-	var SPOT = 'https://api.coinbase.com/v2/prices/BTC-USD/spot', HIST = 'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60';
+	// ticker = last trade on the Coinbase exchange (updates every trade); v2 spot is cached and lagged up to ~20 s in a 2026-10-18 check
+	var SPOT = 'https://api.exchange.coinbase.com/products/BTC-USD/ticker', SPOT_FALLBACK = 'https://api.coinbase.com/v2/prices/BTC-USD/spot', HIST = 'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60';
 	var RANDOM_N = 1000;
 	function canGoLive() { return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname); }
 	function nowMin() { return Math.floor(Date.now() / 60000); }
@@ -456,8 +457,9 @@ function start(meta) {
 	}
 	function livePoll() {
 		if (!LV) return; LV.lastFetch = Date.now();
-		fetch(SPOT, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) {
-			var p = parseFloat(j.data.amount), m = nowMin(); if (!(p > 0)) throw new Error('가격 없음');
+		function get(u) { return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
+		get(SPOT).catch(function () { return get(SPOT_FALLBACK); }).then(function (j) {
+			var p = parseFloat(j.price != null ? j.price : (j.data && j.data.amount)), m = nowMin(); if (!(p > 0)) throw new Error('가격 없음');
 			var c = LV.candles[m]; if (!c) LV.candles[m] = [m * 60, p, p, p, p, 0]; else { c[2] = Math.max(c[2], p); c[3] = Math.min(c[3], p); c[4] = p; }
 			LV.lastOk = Date.now(); LV.err = null; liveDraw(); livePnl();
 		}).catch(function (e) { LV.err = '시세를 못 받았어요 (' + e.message + '). 인터넷 연결을 확인해 주세요.'; liveDraw(); });
