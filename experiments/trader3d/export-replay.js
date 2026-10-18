@@ -148,7 +148,7 @@ function writeMeta() {
 	var meta = {
 		source: 'experiments/config/trade-stonkfly-window-fixed1pct.json (weightScale 20, VIS_R1R6, descending readout)',
 		rules: R, nNeurons: N, subsetSize: sub.list.length, positionsU16: Buffer.from(sp.buffer).toString('base64'), role: sub.role, cls: sub.list.map(function (o) { return cls[o]; }),
-		candles: candles, points: points.map(function (p) { return { t: p.t, price: p.price, ret: p.ret }; }), finalPrice: finalPrice,
+		candles: candles, candles1m: rows.map(function (x) { return [x.t, x.open, x.high, x.low, x.close, +x.volume.toFixed(6)]; }), points: points.map(function (p) { return { t: p.t, price: p.price, ret: p.ret }; }), finalPrice: finalPrice,
 		reps: reps, rule: rule, matched: matched,
 		random: { n: n, meanPath: Array.from(mean), finalMean: meanAll, p05: q(0.05), p50: q(0.5), p95: q(0.95), shareGe1: fins.filter(function (v) { return v >= 1; }).length / n }
 	};

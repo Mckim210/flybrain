@@ -233,15 +233,38 @@ function start(meta) {
 	/* ---------- monitor drawing (real candles and the fly's real orders) ---------- */
 	var DEC_CANDLE = P.map(function (_, k) { return 4 * (k + 1); });   // decision k closes minute 60(k+1) -> 15-min candle 4(k+1)
 	// replay view model: 15-minute candles of the recorded window, axis fixed to the whole window
+	// chart interval chosen by clicking the 1m/5m/15m/1h tabs drawn on the monitor (kept separately for replay and live)
+	var IVS = [['1m', 60], ['5m', 300], ['15m', 900], ['1h', 3600]], IV_SEC = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600 };
+	var chartIv = { replay: '15m', live: '1m' }, MAX_SLOTS = 120;
+	// group candles [t,o,h,l,c,v] into buckets; key(t) gives the bucket start
+	function groupCandles(rows, key) {
+		var out = [], cur = null;
+		rows.forEach(function (r) { var k = key(r[0]);
+			if (!cur || cur[0] !== k) { cur = [k, r[1], r[2], r[3], r[4], r[5] || 0]; out.push(cur); }
+			else { cur[2] = Math.max(cur[2], r[2]); cur[3] = Math.min(cur[3], r[3]); cur[4] = r[4]; cur[5] += r[5] || 0; } });
+		return out;
+	}
+	var C1 = meta.candles1m || null, RT0 = C[0][0], REPLAY_END = C[C.length - 1][0] + 900;
+	function replaySeries(iv, tEnd) {   // candles of the recorded window up to tEnd (no future prices), buckets counted from the window start like the 15-min candles
+		var sec = IV_SEC[iv];
+		if (!C1) return C.filter(function (c) { return c[0] < tEnd; });
+		return groupCandles(C1.filter(function (r) { return r[0] < tEnd; }), function (t) { return RT0 + Math.floor((t - RT0) / sec) * sec; });
+	}
+	var replayFull = {};
 	function replayVM(st) {
+		var iv = C1 ? chartIv.replay : '15m', sec = IV_SEC[iv], tNow = C[st.candle][0] + 900;
+		var all = replaySeries(iv, tNow), full = replayFull[iv] || (replayFull[iv] = replaySeries(iv, REPLAY_END));
+		var fixed = full.length <= MAX_SLOTS, off = fixed ? 0 : Math.max(0, all.length - MAX_SLOTS), shown = all.slice(off);
 		var marks = [], logs = [];
 		for (var k = 0; k < st.decided; k++) { var done = st.wallet[k].done; if (done === 'hold') continue;
-			marks.push({ i: DEC_CANDLE[k], done: done, latest: k === st.decided - 1 && st.phase === 'act' }); logs.push({ done: done, label: hhmm(P[k].t).slice(6), price: P[k].price }); }
+			marks.push({ i: Math.floor((P[k].t - RT0) / sec) - off, done: done, latest: k === st.decided - 1 && st.phase === 'act' }); logs.push({ done: done, label: hhmm(P[k].t).slice(6), price: P[k].price }); }
 		var w0 = st.decided ? st.wallet[st.decided - 1] : { cash: R.capital, btc: 0 };
-		return { candles: C.slice(0, st.candle + 1), slots: C.length, range: C, marks: marks, logs: logs, interval: '15m', timeLabel: '시각 (UTC)',
-			time: hhmm(C[st.candle][0] + 900), act: st.phase === 'act' ? st.cur.executed : null, note: st.phase === 'act' ? st.cur.note : '', wallet: w0, live: false, footer: '', axisLabel: function (c) { return hhmm(c[0]).slice(6); } };
+		return { candles: shown, slots: fixed ? full.length : MAX_SLOTS, range: fixed ? full : shown, marks: marks, logs: logs, interval: iv, timeLabel: '시각 (UTC)',
+			time: hhmm(tNow), act: st.phase === 'act' ? st.cur.executed : null, note: st.phase === 'act' ? st.cur.note : '', wallet: w0, live: false, footer: '', axisLabel: function (c) { return hhmm(c[0]).slice(6); } };
 	}
 	function drawMonitor(st) { drawMonitorVM(replayVM(st)); }
+	var TAB_X0 = 20, TAB_W = 60, TAB_Y0 = 72, TAB_H = 30;
+	function redrawMonitor() { if (MODE === 'replay') drawMonitor(st); else liveDraw(); }
 	function drawMonitorVM(vm) {
 		var g = mcv.getContext('2d'), shown = vm.candles, last = shown[shown.length - 1];
 		g.fillStyle = '#0a0e18'; g.fillRect(0, 0, MW, MH);
@@ -255,7 +278,10 @@ function start(meta) {
 		var hi = Math.max.apply(null, shown.map(function (c) { return c[2]; })), lo = Math.min.apply(null, shown.map(function (c) { return c[3]; }));
 		var vol = shown.reduce(function (s, c) { return s + (c[5] || 0); }, 0);
 		[['변동', pct(chg)], ['고가', hi.toFixed(0)], ['저가', lo.toFixed(0)], ['거래량', vol > 0 ? vol.toFixed(1) + ' BTC' : '—'], [vm.timeLabel, vm.time]].forEach(function (t, i) { g.font = '20px sans-serif'; g.fillStyle = '#6f7a92'; g.fillText(t[0], 700 + i * 170, 28); g.fillStyle = i === 0 ? (chg >= 0 ? COL.up : COL.down) : '#d6dbe6'; g.fillText(t[1], 700 + i * 170, 52); });
-		g.font = '18px sans-serif'; ['1m', '5m', '15m', '1h'].forEach(function (t, i) { g.fillStyle = t === vm.interval ? COL.amber : '#6f7a92'; g.fillText(t, 28 + i * 52, 96); });
+		IVS.forEach(function (t, i) { var on = t[0] === vm.interval, x = TAB_X0 + i * TAB_W;
+			g.fillStyle = on ? 'rgba(242,183,5,0.16)' : '#111a2c'; g.fillRect(x, TAB_Y0, TAB_W - 8, TAB_H);
+			if (on) { g.fillStyle = COL.amber; g.fillRect(x, TAB_Y0 + TAB_H - 3, TAB_W - 8, 3); }
+			g.fillStyle = on ? COL.amber : '#8b95aa'; g.font = (on ? 'bold ' : '') + '18px sans-serif'; g.textAlign = 'center'; g.fillText(t[0], x + (TAB_W - 8) / 2, TAB_Y0 + 21); g.textAlign = 'left'; });
 		var X0 = 24, X1 = 1090, Y0 = 112, Y1 = 600, VY0 = 618, VY1 = 720;
 		var pmin = Math.min.apply(null, vm.range.map(function (c) { return c[3]; })), pmax = Math.max.apply(null, vm.range.map(function (c) { return c[2]; }));
 		var pad = Math.max(20, (pmax - pmin) * 0.08); pmin -= pad; pmax += pad;
@@ -403,10 +429,11 @@ function start(meta) {
 	var LIVE_SET = { live60: { every: 60, fullScale: 0.01, label: '1시간마다 결정 (소논문 설정, 1% 움직이면 최대 자극)' },
 		live1: { every: 1, fullScale: 0.001, label: '1분마다 결정 (데모, 0.1% 움직이면 최대 자극 · 소논문 설정 아님)' } };
 	// ticker = last trade on the Coinbase exchange (updates every trade); v2 spot is cached and lagged up to ~20 s in a 2026-10-18 check
-	var SPOT = 'https://api.exchange.coinbase.com/products/BTC-USD/ticker', SPOT_FALLBACK = 'https://api.coinbase.com/v2/prices/BTC-USD/spot', HIST = 'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60';
+	var SPOT = 'https://api.exchange.coinbase.com/products/BTC-USD/ticker', SPOT_FALLBACK = 'https://api.coinbase.com/v2/prices/BTC-USD/spot', HIST_BASE = 'https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=', HIST = HIST_BASE + 60;
 	var RANDOM_N = 1000;
 	function canGoLive() { return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname); }
 	function nowMin() { return Math.floor(Date.now() / 60000); }
+	function kstDay(tSec) { var d = new Date((tSec + 9 * 3600) * 1000); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + ' ' + String(d.getUTCHours()).padStart(2, '0') + '시'; }
 	function kst(tSec) { return new Date(tSec * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }); }
 	function setNote(html) { $('note').innerHTML = html; }
 	function emptyBook() { return { cash: R.capital, btc: 0, fees: 0, orders: 0, perDay: {} }; }
@@ -429,7 +456,7 @@ function start(meta) {
 		playing = false; MODE = kind; document.body.classList.add('is-live');
 		var cfg = LIVE_SET[kind];
 		LV = { kind: kind, cfg: cfg, candles: {}, lastDecMin: null, decisions: [], fly: emptyBook(), rule: emptyBook(), rnd: [], phase: 'idle', t: 0, tick: 0, cur: null,
-			worker: null, ready: false, lastFetch: 0, lastOk: null, err: null, started: Date.now() / 1000, pending: null };
+			worker: null, hist: {}, ready: false, lastFetch: 0, lastOk: null, err: null, started: Date.now() / 1000, pending: null };
 		for (var i = 0; i < RANDOM_N; i++) LV.rnd.push(emptyBook());
 		glow.fill(0); paintBrain(); setDN(0, 0); clearRaster();
 		$('decTitle').textContent = '실시간 · ' + cfg.label; $('ret').textContent = '—'; $('stim').textContent = '—'; $('dval').textContent = '—';
@@ -465,15 +492,44 @@ function start(meta) {
 		}).catch(function (e) { LV.err = '시세를 못 받았어요 (' + e.message + '). 인터넷 연결을 확인해 주세요.'; liveDraw(); });
 	}
 	function liveSeries(n) { var m = nowMin(), out = []; for (var k = m - n + 1; k <= m; k++) if (LV.candles[k]) out.push(LV.candles[k]); return out; }
+	// live candles for the chosen interval: 1m from this page's own minute candles; longer intervals from
+	// Coinbase's candles at that granularity, with the newest buckets topped up from this page's minute candles
+	function liveIvSeries(iv) {
+		if (iv === '1m') return liveSeries(MAX_SLOTS);
+		var sec = IV_SEC[iv], H = LV.hist[iv], map = {}, built = {};
+		var nowB = Math.floor(Date.now() / 1000 / sec) * sec, firstB = nowB - (MAX_SLOTS - 1) * sec;
+		if (H) H.rows.forEach(function (c) { map[c[0]] = c.slice(); });
+		var lastHist = H && H.rows.length ? H.rows[H.rows.length - 1][0] : -Infinity;
+		Object.keys(LV.candles).map(Number).sort(function (a, b) { return a - b; }).forEach(function (m) {
+			var c = LV.candles[m], b = Math.floor(c[0] / sec) * sec; if (b < firstB || b < lastHist) return;   // older buckets: Coinbase's own candle is complete
+			var x = built[b]; if (!x) built[b] = [b, c[1], c[2], c[3], c[4], c[5] || 0]; else { x[2] = Math.max(x[2], c[2]); x[3] = Math.min(x[3], c[3]); x[4] = c[4]; x[5] += c[5] || 0; } });
+		Object.keys(built).forEach(function (b) { var y = built[b], x = map[b];
+			if (!x) map[b] = y;   // bucket Coinbase has not published yet: build it from this page's minutes
+			else { x[2] = Math.max(x[2], y[2]); x[3] = Math.min(x[3], y[3]); x[4] = y[4]; } });   // newest published bucket: top up with newer prices
+		return Object.keys(map).map(Number).filter(function (b) { return b >= firstB && b <= nowB; }).sort(function (a, b) { return a - b; }).map(function (b) { return map[b]; });
+	}
+	function liveFetchIv(iv, force) {
+		if (!LV || iv === '1m') return;
+		var H = LV.hist[iv], now = Date.now() / 1000;
+		if (!force && H && (H.loading || now - H.fetchedAt < 60)) return;
+		if (H) H.loading = true; else LV.hist[iv] = H = { rows: [], fetchedAt: 0, loading: true };
+		var mine = LV;
+		fetch(HIST_BASE + IV_SEC[iv], { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (rows) {
+			if (LV !== mine) return;
+			H.rows = rows.map(function (c) { return [c[0], c[3], c[2], c[1], c[4], c[5]]; }).sort(function (a, b) { return a[0] - b[0]; });   // [time, low, high, open, close, vol] -> [t,o,h,l,c,v], oldest first
+			H.fetchedAt = Date.now() / 1000; H.loading = false; liveDraw();
+		}).catch(function () { H.loading = false; H.fetchedAt = Date.now() / 1000; });
+	}
 	function liveDraw() {
 		if (!LV) return;
-		var shown = liveSeries(120), t0 = shown.length ? shown[0][0] : 0, slot = function (tSec) { return Math.round((tSec - t0) / 60); };
+		var iv = chartIv.live, sec = IV_SEC[iv]; liveFetchIv(iv);
+		var shown = liveIvSeries(iv), t0 = shown.length ? shown[0][0] : 0, slot = function (tSec) { return Math.floor((Math.floor(tSec / sec) * sec - t0) / sec); };
 		var marks = [], logs = [];
 		LV.decisions.forEach(function (d, k) { if (d.executed === 'hold') return; marks.push({ i: slot(d.minuteStart), done: d.executed, latest: k === LV.decisions.length - 1 && LV.phase === 'act' }); logs.push({ done: d.executed, label: kst(d.t), price: d.price }); });
 		var status = LV.err ? LV.err : (LV.lastOk ? '현재가 ' + Math.round((Date.now() - LV.lastOk) / 1000) + '초 전 갱신 · 다음 결정 ' + liveCountdown() : '시세 연결 중…');
-		drawMonitorVM({ candles: shown, slots: 120, range: shown.length ? shown : [[0, 0, 1, 0, 0, 0]], marks: marks, logs: logs, interval: '1m', timeLabel: '시각 (한국)',
+		drawMonitorVM({ candles: shown, slots: MAX_SLOTS, range: shown.length ? shown : [[0, 0, 1, 0, 0, 0]], marks: marks, logs: logs, interval: iv, timeLabel: '시각 (한국)',
 			time: kst(Date.now() / 1000), act: LV.phase === 'act' && LV.cur ? LV.cur.executed : null, note: LV.cur ? LV.cur.note : '', wallet: LV.fly, live: true, footer: status,
-			axisLabel: function (c) { return kst(c[0]); } });
+			axisLabel: function (c) { return iv === '1h' ? kstDay(c[0]) : kst(c[0]); } });
 	}
 	function liveCountdown() { var every = LV.cfg.every, m = nowMin(), next = (Math.floor(m / every) + 1) * every, s = next * 60 - Date.now() / 1000; return Math.floor(s / 60) + '분 ' + String(Math.floor(s % 60)).padStart(2, '0') + '초 뒤'; }
 	function liveMaybeDecide() {
@@ -575,9 +631,32 @@ function start(meta) {
 		$('focus').setAttribute('aria-pressed', String(v === 'brain')); $('monitorBtn').setAttribute('aria-pressed', String(v === 'monitor'));
 		$('focus').textContent = v === 'brain' ? '전체 보기' : '뇌 확대'; $('monitorBtn').textContent = v === 'monitor' ? '전체 보기' : '모니터 보기';
 		if (v === 'brain') { var c = holo.position.clone(); flyTo(c.clone().add(new THREE.Vector3(0.7, 0.3, 4.4)), c.clone().add(new THREE.Vector3(0, 0.1, 0))); }
-		else if (v === 'monitor') { var n = new THREE.Vector3(0, 0, 1).applyQuaternion(screen.quaternion); flyTo(screen.position.clone().add(n.multiplyScalar(3.1)).add(new THREE.Vector3(0, 0.45, 0)), screen.position.clone().add(new THREE.Vector3(0, 0.1, 0))); }
+		else if (v === 'monitor') { var n = new THREE.Vector3(0, 0, 1).applyQuaternion(screen.quaternion), tf = Math.tan(camera.fov * Math.PI / 360);
+			var dist = 1.12 * Math.max(1.2 / tf, 2.05 / (tf * camera.aspect));   // fit the whole screen (with its 1m/5m/15m/1h tabs) in view
+			flyTo(screen.position.clone().add(n.multiplyScalar(dist)).add(new THREE.Vector3(0, 0.45, 0)), screen.position.clone().add(new THREE.Vector3(0, 0.1, 0))); }
 		else flyTo(HOME.p.clone(), HOME.t.clone());
 	}
+	// clicking the 1m/5m/15m/1h tabs on the 3D monitor: ray -> screen UV -> monitor canvas pixel
+	var ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), downXY = null;
+	function tabAt(ev) {
+		var r = canvas.getBoundingClientRect(); ndc.set((ev.clientX - r.left) / r.width * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+		ray.setFromCamera(ndc, camera); var hit = ray.intersectObject(screen)[0]; if (!hit || !hit.uv) return null;
+		var x = hit.uv.x * MW, y = (1 - hit.uv.y) * MH; if (y < TAB_Y0 - 6 || y > TAB_Y0 + TAB_H + 6) return null;
+		var i = Math.floor((x - TAB_X0) / TAB_W); if (i < 0 || i >= IVS.length || x - TAB_X0 - i * TAB_W > TAB_W - 4) return null;
+		if (MODE === 'replay' && !C1) return null;
+		return IVS[i][0];
+	}
+	canvas.addEventListener('pointerdown', function (e) { downXY = [e.clientX, e.clientY]; });
+	if (/[?&]debug\b/.test(location.search)) window.__flyDebug = { tabPoint: function (i) {   // screen point of tab i, for automated tests
+		var u = (TAB_X0 + i * TAB_W + (TAB_W - 8) / 2) / MW - 0.5, v = 0.5 - (TAB_Y0 + TAB_H / 2) / MH, p = new THREE.Vector3(u * 3.9, v * 2.19, 0);
+		screen.updateMatrixWorld(); p.applyMatrix4(screen.matrixWorld).project(camera); var r = canvas.getBoundingClientRect();
+		return [r.left + (p.x + 1) / 2 * r.width, r.top + (1 - p.y) / 2 * r.height]; }, iv: function () { return chartIv; } };
+	canvas.addEventListener('pointerup', function (e) {
+		if (!downXY || Math.abs(e.clientX - downXY[0]) + Math.abs(e.clientY - downXY[1]) > 6) return;   // a drag turns the camera, not a click
+		var iv = tabAt(e); if (!iv) return;
+		chartIv[MODE === 'replay' ? 'replay' : 'live'] = iv; if (MODE !== 'replay') liveFetchIv(iv, true); redrawMonitor();
+	});
+	canvas.addEventListener('pointermove', function (e) { if (e.buttons) return; canvas.style.cursor = tabAt(e) ? 'pointer' : ''; });
 	$('focus').addEventListener('click', function () { setView(view === 'brain' ? 'home' : 'brain'); });
 	$('monitorBtn').addEventListener('click', function () { setView(view === 'monitor' ? 'home' : 'monitor'); });
 	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { labelRedraws.forEach(function (f) { f(); }); if (lastReadout[0]) setReadout(lastReadout[0], lastReadout[1]); });
