@@ -251,6 +251,7 @@ function start(meta) {
 		if (!last) { g.fillStyle = '#8b95aa'; g.font = '26px sans-serif'; g.fillText(vm.footer || '시세를 기다리는 중', 24, 140); mtex.needsUpdate = true; return; }
 		var chg = last[4] / shown[0][1] - 1; g.fillStyle = chg >= 0 ? COL.up : COL.down; g.font = 'bold 30px monospace'; g.fillText('$' + last[4].toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 330, 44);
 		if (vm.live) { g.fillStyle = COL.down; g.beginPath(); g.arc(590, 34, 9, 0, 7); g.fill(); g.font = 'bold 20px sans-serif'; g.fillText('LIVE', 606, 41); }
+		else { g.fillStyle = COL.amber; g.fillRect(560, 16, 120, 34); g.fillStyle = '#1a1205'; g.font = 'bold 18px sans-serif'; g.fillText('기록 재생', 578, 40); }
 		var hi = Math.max.apply(null, shown.map(function (c) { return c[2]; })), lo = Math.min.apply(null, shown.map(function (c) { return c[3]; }));
 		var vol = shown.reduce(function (s, c) { return s + (c[5] || 0); }, 0);
 		[['변동', pct(chg)], ['고가', hi.toFixed(0)], ['저가', lo.toFixed(0)], ['거래량', vol > 0 ? vol.toFixed(1) + ' BTC' : '—'], [vm.timeLabel, vm.time]].forEach(function (t, i) { g.font = '20px sans-serif'; g.fillStyle = '#6f7a92'; g.fillText(t[0], 700 + i * 170, 28); g.fillStyle = i === 0 ? (chg >= 0 ? COL.up : COL.down) : '#d6dbe6'; g.fillText(t[1], 700 + i * 170, 52); });
@@ -458,7 +459,7 @@ function start(meta) {
 		fetch(SPOT, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) {
 			var p = parseFloat(j.data.amount), m = nowMin(); if (!(p > 0)) throw new Error('가격 없음');
 			var c = LV.candles[m]; if (!c) LV.candles[m] = [m * 60, p, p, p, p, 0]; else { c[2] = Math.max(c[2], p); c[3] = Math.min(c[3], p); c[4] = p; }
-			LV.lastOk = Date.now(); LV.err = null; liveDraw();
+			LV.lastOk = Date.now(); LV.err = null; liveDraw(); livePnl();
 		}).catch(function (e) { LV.err = '시세를 못 받았어요 (' + e.message + '). 인터넷 연결을 확인해 주세요.'; liveDraw(); });
 	}
 	function liveSeries(n) { var m = nowMin(), out = []; for (var k = m - n + 1; k <= m; k++) if (LV.candles[k]) out.push(LV.candles[k]); return out; }
@@ -524,7 +525,9 @@ function start(meta) {
 	function livePnl() {
 		var last = liveSeries(1)[0], price = last ? last[4] : null;
 		function show(id, v) { var el = $(id); if (v == null) { el.textContent = '—'; el.className = 'n'; return; } el.textContent = money(v); el.className = 'n ' + (v > 0.004 ? 'pos' : (v < -0.004 ? 'neg' : '')); }
-		if (!price) { ['flyPnl', 'rulePnl', 'randPnl', 'matchPnl'].forEach(function (id) { show(id, null); }); return; }
+		if (!price) { ['flyPnl', 'rulePnl', 'randPnl', 'matchPnl'].forEach(function (id) { show(id, null); });
+			$('flyMeta').textContent = '주문 0'; $('ruleMeta').textContent = '주문 0'; $('matchMeta').textContent = '초파리와 주문 수가 같은 무작위 투자자';
+			$('final').textContent = '실시간 모드 · 코인베이스 현재가를 받는 중'; return; }
 		show('flyPnl', value(LV.fly, price)); show('rulePnl', value(LV.rule, price));
 		var sum = 0; LV.rnd.forEach(function (b) { sum += value(b, price); }); show('randPnl', sum / LV.rnd.length);
 		var same = LV.rnd.filter(function (b) { return b.orders === LV.fly.orders; });
@@ -590,6 +593,8 @@ function start(meta) {
 		while (!(st.phase === 'walk' && st.decided >= 12 && st.candle >= DEC_CANDLE[12] - 1)) step(0.5);
 		drawMonitor(st); updatePnl();
 		frame();
+		// opened from this computer (START.bat): start straight in live mode so the chart is today's price
+		if (canGoLive()) { $('mode').value = 'live1'; liveStart('live1'); }
 	});
 	// final check: page wallet replay must match the exporter's numbers
 	meta.reps.forEach(function (r) { var w = walletPath(r.decisions.map(function (d) { return d.action; })); var v = w[w.length - 1]; var fin = v.cash + v.btc * meta.finalPrice - R.capital; if (Math.abs(fin - r.equity.final) > 1e-6) console.warn('wallet mismatch rep', r.rep); });
