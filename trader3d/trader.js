@@ -434,7 +434,7 @@ function start(meta) {
 	function canGoLive() { return /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname); }
 	function nowMin() { return Math.floor(Date.now() / 60000); }
 	function kstDay(tSec) { var d = new Date((tSec + 9 * 3600) * 1000); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + ' ' + String(d.getUTCHours()).padStart(2, '0') + '시'; }
-	function kst(tSec) { return new Date(tSec * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }); }
+	function kst(tSec) { return new Date(tSec * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul' }); }
 	function setNote(html) { $('note').innerHTML = html; }
 	function emptyBook() { return { cash: R.capital, btc: 0, fees: 0, orders: 0, perDay: {} }; }
 	function trade(b, a, price, tSec) {   // same order rules as experiments/lib/market.js
@@ -446,6 +446,8 @@ function start(meta) {
 		}
 		return done;
 	}
+	function utcDay(tSec) { return new Date(tSec * 1000).toISOString().slice(0, 10); }
+	function flyLimitHit(tSec) { return LV && (LV.fly.perDay[utcDay(tSec)] || 0) >= R.maxOrdersPerDay; }
 	function value(b, price) { return b.cash + b.btc * price - R.capital; }
 
 	function liveStart(kind) {
@@ -470,10 +472,7 @@ function start(meta) {
 			else if (m.type === 'decision') liveGotDecision(m);
 			else if (m.type === 'error') { LV.err = m.message; setVerdict('뇌 오류', m.message, COL.down); } };
 		w.postMessage({ type: 'init' });
-		fetch(HIST, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (rows) {
-			rows.forEach(function (c) { LV.candles[Math.floor(c[0] / 60)] = [c[0], c[3], c[2], c[1], c[4], c[5]]; });   // [time, low, high, open, close, vol] -> [t,o,h,l,c,v]
-			LV.histOk = true; liveDraw();
-		}).catch(function () { LV.histOk = false; });
+		liveBackfill();
 		livePoll(); liveDraw(); updatePnl();
 	}
 	function liveStop() {
@@ -490,6 +489,17 @@ function start(meta) {
 			var c = LV.candles[m]; if (!c) LV.candles[m] = [m * 60, p, p, p, p, 0]; else { c[2] = Math.max(c[2], p); c[3] = Math.min(c[3], p); c[4] = p; }
 			LV.lastOk = Date.now(); LV.err = null; liveDraw(); livePnl();
 		}).catch(function (e) { LV.err = '시세를 못 받았어요 (' + e.message + '). 인터넷 연결을 확인해 주세요.'; liveDraw(); });
+	}
+	// Coinbase's own 1-minute candles: fill minutes this page missed (e.g. computer asleep) and add volume.
+	// Minutes this page watched in the last 3 minutes keep the page's own prices.
+	function liveBackfill() {
+		if (!LV) return; var mine = LV; LV.lastBackfill = Date.now();
+		fetch(HIST, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (rows) {
+			if (LV !== mine) return; var now = nowMin();
+			rows.forEach(function (c) { var m = Math.floor(c[0] / 60); if (m >= now || (LV.candles[m] && m >= now - 3)) return;
+				LV.candles[m] = [c[0], c[3], c[2], c[1], c[4], c[5]]; });   // [time, low, high, open, close, vol] -> [t,o,h,l,c,v]
+			LV.histOk = true; liveDraw();
+		}).catch(function () { if (LV === mine) LV.histOk = false; });
 	}
 	function liveSeries(n) { var m = nowMin(), out = []; for (var k = m - n + 1; k <= m; k++) if (LV.candles[k]) out.push(LV.candles[k]); return out; }
 	// live candles for the chosen interval: 1m from this page's own minute candles; longer intervals from
@@ -523,10 +533,12 @@ function start(meta) {
 	function liveDraw() {
 		if (!LV) return;
 		var iv = chartIv.live, sec = IV_SEC[iv]; liveFetchIv(iv);
-		var shown = liveIvSeries(iv), t0 = shown.length ? shown[0][0] : 0, slot = function (tSec) { return Math.floor((Math.floor(tSec / sec) * sec - t0) / sec); };
+		var shown = liveIvSeries(iv), idx = {}; shown.forEach(function (c, i) { idx[Math.floor(c[0] / sec) * sec] = i; });
+		var slot = function (tSec) { var i = idx[Math.floor(tSec / sec) * sec]; return i == null ? -1 : i; };
 		var marks = [], logs = [];
 		LV.decisions.forEach(function (d, k) { if (d.executed === 'hold') return; marks.push({ i: slot(d.minuteStart), done: d.executed, latest: k === LV.decisions.length - 1 && LV.phase === 'act' }); logs.push({ done: d.executed, label: kst(d.t), price: d.price }); });
 		var status = LV.err ? LV.err : (LV.lastOk ? '현재가 ' + Math.round((Date.now() - LV.lastOk) / 1000) + '초 전 갱신 · 다음 결정 ' + liveCountdown() : '시세 연결 중…');
+		if (flyLimitHit(Date.now() / 1000)) status += ' · 오늘 주문 한도 ' + R.maxOrdersPerDay + '건 도달(한국 시각 09:00에 초기화)';
 		drawMonitorVM({ candles: shown, slots: MAX_SLOTS, range: shown.length ? shown : [[0, 0, 1, 0, 0, 0]], marks: marks, logs: logs, interval: iv, timeLabel: '시각 (한국)',
 			time: kst(Date.now() / 1000), act: LV.phase === 'act' && LV.cur ? LV.cur.executed : null, note: LV.cur ? LV.cur.note : '', wallet: LV.fly, live: true, footer: status,
 			axisLabel: function (c) { return iv === '1h' ? kstDay(c[0]) : kst(c[0]); } });
@@ -551,7 +563,22 @@ function start(meta) {
 		if (eye && inten > 0) { aimBeam(eye); beam.material.opacity = 0.9; }
 		LV.worker.postMessage({ type: 'decide', id: LV.decisions.length, intensity: LV.cur.intensity, eye: eye, seed: seed });
 	}
-	function liveGotDecision(m) { if (!LV || !LV.cur) return; LV.cur.res = m; }
+	function liveGotDecision(m) { if (!LV || !LV.cur) return; LV.cur.res = m; if (document.hidden) liveHeartbeat(); }
+	// Browsers pause animation frames in a background tab, so polling and decisions also run from this heartbeat.
+	// When the tab is hidden, a decision is applied at once without the 50-tick animation.
+	function liveHeartbeat() {
+		if (!LV) return;
+		if (Date.now() - LV.lastFetch > 5000) livePoll();
+		if (Date.now() - (LV.lastBackfill || 0) > 60000) liveBackfill();
+		if (document.hidden) {
+			if ((LV.phase === 'stim' || LV.phase === 'ticks') && LV.cur && LV.cur.res) { LV.cur.l = LV.cur.res.spikesL; LV.cur.r = LV.cur.res.spikesR; setDN(LV.cur.l, LV.cur.r); liveFinish(); }
+			if (LV.phase === 'act') { LV.phase = 'idle'; LV.t = 0; turnTarget = 0; }
+		}
+		liveMaybeDecide();
+	}
+	var beat = null;
+	try { beat = new Worker(URL.createObjectURL(new Blob(['setInterval(function(){postMessage(0)},1000)'], { type: 'text/javascript' }))); beat.onmessage = liveHeartbeat; }
+	catch (e) { setInterval(liveHeartbeat, 1000); }
 	function liveStep(dt) {
 		if (!LV) return;
 		if (Date.now() - LV.lastFetch > 5000) livePoll();
@@ -570,7 +597,8 @@ function start(meta) {
 		var c = LV.cur, res = c.res, ex = trade(LV.fly, res.action, c.price, c.t);
 		trade(LV.rule, c.ret > 0 ? 'buy' : (c.ret < 0 ? 'sell' : 'hold'), c.price, c.t);
 		LV.rnd.forEach(function (b) { var u = Math.random(); trade(b, u < 1 / 3 ? 'buy' : (u < 2 / 3 ? 'sell' : 'hold'), c.price, c.t); });
-		c.executed = ex; c.note = res.action === 'sell' && ex === 'hold' ? '매도 신호 · 팔 BTC가 없어 주문 안 됨' : (res.action === 'buy' && ex === 'hold' ? '매수 신호 · 주문 한도로 주문 안 됨' : (res.action === 'hold' ? '좌우 차이가 작아 보유' : ''));
+		var why = flyLimitHit(c.t) ? '오늘 주문 한도 ' + R.maxOrdersPerDay + '건을 다 써서' : (res.action === 'sell' ? '팔 BTC가 없어' : '쓸 수 있는 현금이 없어');
+		c.executed = ex; c.note = res.action === 'hold' ? '좌우 차이가 작아 보유' : (ex === 'hold' ? (res.action === 'sell' ? '매도' : '매수') + ' 신호 · ' + why + ' 주문 안 됨' : '');
 		LV.decisions.push(c); LV.phase = 'act'; LV.t = 0; beam.material.opacity = 0;
 		$('dval').textContent = (res.d >= 0 ? '+' : '−') + Math.abs(res.d).toFixed(2);
 		var label = { buy: '매수 $10', sell: '매도 $10', hold: '보유' }[ex], color = ex === 'buy' ? COL.up : (ex === 'sell' ? COL.down : COL.ink);
@@ -631,9 +659,13 @@ function start(meta) {
 		$('focus').setAttribute('aria-pressed', String(v === 'brain')); $('monitorBtn').setAttribute('aria-pressed', String(v === 'monitor'));
 		$('focus').textContent = v === 'brain' ? '전체 보기' : '뇌 확대'; $('monitorBtn').textContent = v === 'monitor' ? '전체 보기' : '모니터 보기';
 		if (v === 'brain') { var c = holo.position.clone(); flyTo(c.clone().add(new THREE.Vector3(0.7, 0.3, 4.4)), c.clone().add(new THREE.Vector3(0, 0.1, 0))); }
-		else if (v === 'monitor') { var n = new THREE.Vector3(0, 0, 1).applyQuaternion(screen.quaternion), tf = Math.tan(camera.fov * Math.PI / 360);
-			var dist = 1.12 * Math.max(1.2 / tf, 2.05 / (tf * camera.aspect));   // fit the whole screen (with its 1m/5m/15m/1h tabs) in view
-			flyTo(screen.position.clone().add(n.multiplyScalar(dist)).add(new THREE.Vector3(0, 0.45, 0)), screen.position.clone().add(new THREE.Vector3(0, 0.1, 0))); }
+		else if (v === 'monitor') { var n = new THREE.Vector3(0, 0, 1).applyQuaternion(screen.quaternion), rt = new THREE.Vector3(1, 0, 0).applyQuaternion(screen.quaternion), tf = Math.tan(camera.fov * Math.PI / 360);
+			// on wide screens the P&L panel floats over the right side: fit the monitor into the part left of it
+			var cr = canvas.getBoundingClientRect(), pr = document.querySelector('.pnl').getBoundingClientRect();
+			var frac = pr.left > cr.left + cr.width * 0.5 && pr.top < cr.bottom && pr.bottom > cr.top ? Math.max(0.5, (pr.left - 12 - cr.left) / cr.width) : 1;
+			var dist = 1.1 * Math.max(1.25 / tf, 2.05 / (tf * camera.aspect * frac));   // whole screen, tabs included
+			var side = rt.multiplyScalar((1 - frac) * dist * tf * camera.aspect), tgt = screen.position.clone().add(new THREE.Vector3(0, 0.1, 0)).add(side);
+			flyTo(screen.position.clone().add(n.multiplyScalar(dist)).add(new THREE.Vector3(0, 0.45, 0)).add(side), tgt); }
 		else flyTo(HOME.p.clone(), HOME.t.clone());
 	}
 	// clicking the 1m/5m/15m/1h tabs on the 3D monitor: ray -> screen UV -> monitor canvas pixel
