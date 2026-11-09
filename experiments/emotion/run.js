@@ -90,6 +90,9 @@ function expectedFor(plain, k) {
 	return null;
 }
 
+module.exports = { runOne: runOne, makeRng: makeRng, expectedFor: expectedFor, mean: mean, CONFIGS: CONFIGS, THIRD: THIRD };
+if (require.main !== module) return;
+
 var periods = [], verified = true;
 CONFIGS.forEach(function (file) {
 	var cfg = common.loadTradeConfig(path.join(EXP, 'config', file)), R = cfg.rules;
