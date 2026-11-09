@@ -1,0 +1,327 @@
+{
+  "plan": "experiments/emotion/PLAN.md",
+  "verifiedAgainstMarketSimulate": true,
+  "investorsPerGroup": 10000,
+  "periods": [
+    {
+      "name": "trade-stonkfly-window-fixed1pct",
+      "label": "STONKFLY 기간",
+      "fly": {
+        "pnl": 0.030737377022256852,
+        "orders": 4.033333333333333,
+        "fees": 0.239727744931335,
+        "runs": 30
+      },
+      "rule": {
+        "pnl": -1.1012466468672812,
+        "orders": 22,
+        "fees": 1.318589902110991
+      },
+      "investors": {
+        "plain": {
+          "pnl": -0.14892615181936797,
+          "orders": 14.9089,
+          "fees": 0.86816900707596,
+          "residualSameOrders": -0.000017623420231633712,
+          "shareAtLeast1": 0.0547
+        },
+        "disposition": {
+          "pnl": 0.7719708249409583,
+          "orders": 13.8252,
+          "fees": 0.8195531635452504,
+          "residualSameOrders": 0.9211510743571052,
+          "shareAtLeast1": 0.4111
+        },
+        "overconfidence": {
+          "pnl": -0.14608196639529417,
+          "orders": 14.9316,
+          "fees": 0.8698307855973128,
+          "residualSameOrders": 0.003217673514049302,
+          "shareAtLeast1": 0.0517
+        },
+        "chase": {
+          "pnl": -0.2163618922010752,
+          "orders": 15.8993,
+          "fees": 0.9285574330521759,
+          "residualSameOrders": -0.06521268379536688,
+          "shareAtLeast1": 0.0313
+        }
+      }
+    },
+    {
+      "name": "periods/p20250910",
+      "label": "상승장",
+      "fly": {
+        "pnl": 0.02299802998293927,
+        "orders": 3.6,
+        "fees": 0.2159937890923127,
+        "runs": 10
+      },
+      "rule": {
+        "pnl": -0.6381413792009596,
+        "orders": 26,
+        "fees": 1.560000000000001
+      },
+      "investors": {
+        "plain": {
+          "pnl": -0.5308943597722289,
+          "orders": 15.2101,
+          "fees": 0.8688943558371366,
+          "residualSameOrders": 0.0000730927924526782,
+          "shareAtLeast1": 0
+        },
+        "disposition": {
+          "pnl": -0.4104819449564292,
+          "orders": 15.0305,
+          "fees": 0.8639382501158239,
+          "residualSameOrders": 0.11654387860803259,
+          "shareAtLeast1": 0
+        },
+        "overconfidence": {
+          "pnl": -0.5576531787333895,
+          "orders": 15.6745,
+          "fees": 0.8964000920064362,
+          "residualSameOrders": -0.014623148953683298,
+          "shareAtLeast1": 0
+        },
+        "chase": {
+          "pnl": -0.5460596937860085,
+          "orders": 17.1114,
+          "fees": 1.0061580612032477,
+          "residualSameOrders": 0.030490075586270638,
+          "shareAtLeast1": 0
+        }
+      }
+    },
+    {
+      "name": "periods/p20260220",
+      "label": "상승장",
+      "fly": {
+        "pnl": -0.30838747621680795,
+        "orders": 4.7,
+        "fees": 0.28191359248611036,
+        "runs": 10
+      },
+      "rule": {
+        "pnl": -1.6124511800331618,
+        "orders": 26,
+        "fees": 1.5598894688408045
+      },
+      "investors": {
+        "plain": {
+          "pnl": -0.6878740525312662,
+          "orders": 15.1153,
+          "fees": 0.868408993190426,
+          "residualSameOrders": 0.00014843960963246335,
+          "shareAtLeast1": 0
+        },
+        "disposition": {
+          "pnl": -0.49916375650994443,
+          "orders": 14.4287,
+          "fees": 0.8367447715122945,
+          "residualSameOrders": 0.16030865034100394,
+          "shareAtLeast1": 0
+        },
+        "overconfidence": {
+          "pnl": -0.6951626115278323,
+          "orders": 15.2792,
+          "fees": 0.8779711726569349,
+          "residualSameOrders": -0.00021473550441248424,
+          "shareAtLeast1": 0
+        },
+        "chase": {
+          "pnl": -1.0704164478670415,
+          "orders": 18.1248,
+          "fees": 1.0754249003544902,
+          "residualSameOrders": -0.25580264702002187,
+          "shareAtLeast1": 0
+        }
+      }
+    },
+    {
+      "name": "periods/p20260526",
+      "label": "하락장",
+      "fly": {
+        "pnl": -0.18495150913550304,
+        "orders": 2.2,
+        "fees": 0.1257649228653281,
+        "runs": 10
+      },
+      "rule": {
+        "pnl": -1.4646148282852351,
+        "orders": 20,
+        "fees": 1.198402727394657
+      },
+      "investors": {
+        "plain": {
+          "pnl": -1.1532656517107263,
+          "orders": 14.8896,
+          "fees": 0.8679713088673814,
+          "residualSameOrders": -0.00003126178196575418,
+          "shareAtLeast1": 0
+        },
+        "disposition": {
+          "pnl": -1.3060089121493847,
+          "orders": 13.9211,
+          "fees": 0.8225493821542504,
+          "residualSameOrders": -0.23717692052114533,
+          "shareAtLeast1": 0
+        },
+        "overconfidence": {
+          "pnl": -1.1595561870136701,
+          "orders": 14.9186,
+          "fees": 0.870230490296168,
+          "residualSameOrders": -0.003968052611831668,
+          "shareAtLeast1": 0
+        },
+        "chase": {
+          "pnl": -1.4076531105183518,
+          "orders": 16.0628,
+          "fees": 0.9465833650728726,
+          "residualSameOrders": -0.15435508928705466,
+          "shareAtLeast1": 0
+        }
+      }
+    },
+    {
+      "name": "periods/p20260731",
+      "label": "하락장",
+      "fly": {
+        "pnl": -0.10396269144299168,
+        "orders": 1.8,
+        "fees": 0.10791948552970312,
+        "runs": 10
+      },
+      "rule": {
+        "pnl": -1.0018455286597572,
+        "orders": 18,
+        "fees": 1.0198956605114904
+      },
+      "investors": {
+        "plain": {
+          "pnl": -1.1736643621369556,
+          "orders": 14.681,
+          "fees": 0.867427449745511,
+          "residualSameOrders": 0.00020637422543792657,
+          "shareAtLeast1": 0
+        },
+        "disposition": {
+          "pnl": -1.2997156028997363,
+          "orders": 13.62,
+          "fees": 0.810492613344863,
+          "residualSameOrders": -0.23204667850279428,
+          "shareAtLeast1": 0
+        },
+        "overconfidence": {
+          "pnl": -1.1717468469442092,
+          "orders": 14.6921,
+          "fees": 0.8675451042049573,
+          "residualSameOrders": 0.003012004743296662,
+          "shareAtLeast1": 0
+        },
+        "chase": {
+          "pnl": -1.0576897370233618,
+          "orders": 13.8063,
+          "fees": 0.8192294051740522,
+          "residualSameOrders": 0.03148393889277302,
+          "shareAtLeast1": 0
+        }
+      }
+    },
+    {
+      "name": "periods/p20260818",
+      "label": "횡보장",
+      "fly": {
+        "pnl": -0.1039811350301875,
+        "orders": 2.1,
+        "fees": 0.11999909481174684,
+        "runs": 10
+      },
+      "rule": {
+        "pnl": -1.5188607061522532,
+        "orders": 24,
+        "fees": 1.4400000000000008
+      },
+      "investors": {
+        "plain": {
+          "pnl": -0.8654184772630444,
+          "orders": 15.0567,
+          "fees": 0.8684596009934583,
+          "residualSameOrders": 0.00017357081336599877,
+          "shareAtLeast1": 0
+        },
+        "disposition": {
+          "pnl": -0.8017854864783392,
+          "orders": 14.5257,
+          "fees": 0.8543269729470372,
+          "residualSameOrders": 0.03391959446313367,
+          "shareAtLeast1": 0
+        },
+        "overconfidence": {
+          "pnl": -0.8674726937156223,
+          "orders": 15.0945,
+          "fees": 0.8708564516411691,
+          "residualSameOrders": 0.00015721640031896502,
+          "shareAtLeast1": 0
+        },
+        "chase": {
+          "pnl": -1.066558962160673,
+          "orders": 16.3558,
+          "fees": 0.9585193446950454,
+          "residualSameOrders": -0.12826921038964473,
+          "shareAtLeast1": 0
+        }
+      }
+    }
+  ],
+  "pooled": {
+    "disposition": {
+      "residualByPeriod": {
+        "n": 6,
+        "mean": 0.12711659979088932,
+        "lo": -0.31460579248947984,
+        "hi": 0.5688389920712585
+      },
+      "periodsWorseThanFly": 5,
+      "meanPnl": -0.5908641463421459,
+      "meanOrders": 14.225200000000001
+    },
+    "overconfidence": {
+      "residualByPeriod": {
+        "n": 6,
+        "mean": -0.0020698404020437536,
+        "lo": -0.0090206889009655,
+        "hi": 0.004881008096877993
+      },
+      "periodsWorseThanFly": 6,
+      "meanPnl": -0.7662789140550029,
+      "meanOrders": 15.098416666666665
+    },
+    "chase": {
+      "residualByPeriod": {
+        "n": 6,
+        "mean": -0.09027760266884073,
+        "lo": -0.20699813989208676,
+        "hi": 0.026442934554405315
+      },
+      "periodsWorseThanFly": 6,
+      "meanPnl": -0.8941233072594187,
+      "meanOrders": 16.226733333333335
+    },
+    "plain": {
+      "residualByPeriod": {
+        "n": 6,
+        "mean": 0.00009209870644861317,
+        "lo": -0.000012402286528321625,
+        "hi": 0.00019659969942554796
+      },
+      "periodsWorseThanFly": 6,
+      "meanPnl": -0.760007175872265,
+      "meanOrders": 14.976933333333335
+    },
+    "fly": {
+      "meanPnl": -0.10792456747004898,
+      "meanOrders": 3.0722222222222224
+    }
+  }
+}
