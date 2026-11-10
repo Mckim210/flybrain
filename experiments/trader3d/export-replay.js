@@ -3,6 +3,7 @@
  *
  *   node experiments/trader3d/export-replay.js            (all three repeats, 2 processes)
  *   node experiments/trader3d/export-replay.js --rep 11   (one repeat, used internally)
+ *   node experiments/trader3d/export-replay.js --add-emotion   (add the emotion investors to an existing meta.json)
  *
  * Re-runs saved fly repeats of trade-stonkfly-window-fixed1pct (same seeds, so the
  * same decisions) and records, for every decision, which displayed neurons fired
@@ -101,6 +102,37 @@ function equityPath(actions, points, finalPrice, R) {
 	return { path: vals, final: fin.pnl, orders: fin.orders, fees: fin.fees, executed: fin.executed.map(function (e) { return e.action; }) };
 }
 
+/* emotion (behavioural-bias) investors for the page: same seeds and code as experiments/emotion/run.js,
+ * plus the mean P&L after each decision. Also the fly's action rates (for the live-mode same-volume group). */
+function emotionMeta(cfg, points, finalPrice, R) {
+	var emo = require(EXP + '/emotion/run.js');
+	if (path.basename(CFG_FILE) !== emo.CONFIGS[0]) throw new Error('emotion run uses a different first config');
+	var saved = JSON.parse(fs.readFileSync(path.join(EXP, 'emotion', 'results', 'summary.json'), 'utf8')).periods[0];
+	var out = {};
+	['disposition', 'overconfidence', 'chase'].forEach(function (key) {
+		var b = emo.BIASES[key], rng = emo.makeRng(b.seed), T = points.length, mean = new Float64Array(T), fin = 0, orders = 0;
+		for (var i = 0; i < emo.N; i++) {
+			var p = [], r = emo.runOne(b, points, finalPrice, R, rng, p);
+			for (var k = 0; k < T; k++) mean[k] += p[k] / emo.N;
+			fin += r.pnl / emo.N; orders += r.orders / emo.N;
+		}
+		if (Math.abs(fin - saved.investors[key].pnl) > 1e-9) throw new Error(key + ' does not reproduce emotion/results/summary.json');
+		out[key] = { label: b.label, seed: b.seed, n: emo.N, meanPath: Array.from(mean), finalMean: fin, ordersMean: orders };
+	});
+	var summ = JSON.parse(fs.readFileSync(path.join(EXP, 'results', cfg.name, 'summary.json'), 'utf8'));
+	return { emotion: out, flyRates: summ.fly.actionRates };
+}
+
+function addEmotion() {   // patch an existing meta.json without re-running the brain
+	var cfg = common.loadTradeConfig(CFG_FILE), R = cfg.rules;
+	var prices = common.loadPrices(cfg), points = market.decisionPoints(prices, cfg.intervalMin);
+	var file = path.join(OUT, 'meta.json'), meta = JSON.parse(fs.readFileSync(file, 'utf8'));
+	var e = emotionMeta(cfg, points, prices[prices.length - 1].close, R);
+	meta.emotion = e.emotion; meta.flyRates = e.flyRates;
+	fs.writeFileSync(file, JSON.stringify(meta));
+	console.log('emotion added:', Object.keys(e.emotion).map(function (k) { return k + ' ' + e.emotion[k].finalMean.toFixed(4) + ' (' + e.emotion[k].ordersMean.toFixed(2) + ' orders)'; }).join(', '));
+}
+
 function writeMeta() {
 	var cfg = common.loadTradeConfig(CFG_FILE), R = cfg.rules;
 	var prices = common.loadPrices(cfg), points = market.decisionPoints(prices, cfg.intervalMin);
@@ -171,6 +203,7 @@ function writeLiveMeta() {
 }
 
 if (process.argv.indexOf('--live-meta') > 0) { writeLiveMeta(); return; }
+if (process.argv.indexOf('--add-emotion') > 0) { addEmotion(); return; }
 var a = process.argv.indexOf('--rep');
 if (a > 0) runRep(+process.argv[a + 1]);
 else if (process.argv.indexOf('--meta') > 0) writeMeta();

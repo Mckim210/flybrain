@@ -48,7 +48,7 @@ var BIASES = {
 };
 
 /* one investor, same order rules as market.simulate (kept line-for-line equivalent) */
-function runOne(bias, pts, finalPrice, R, rng) {
+function runOne(bias, pts, finalPrice, R, rng, path) {   // path (optional): gets the P&L after each decision, valued at that decision's price
 	var s = { cash: R.capital, btc: 0, fees: 0, costUsd: 0 }, reserve = R.capital * R.reserveRate, perDay = {}, orders = 0;
 	for (var k = 0; k < pts.length; k++) {
 		var pr = bias.probs(s, pts, k, R), u = rng();
@@ -69,6 +69,7 @@ function runOne(bias, pts, finalPrice, R, rng) {
 			}
 			if (done !== 'hold') { perDay[day] = (perDay[day] || 0) + 1; orders++; }
 		}
+		if (path) path.push(s.cash + s.btc * p - R.capital);
 	}
 	return { pnl: s.cash + s.btc * finalPrice - R.capital, orders: orders, fees: s.fees };
 }
@@ -90,7 +91,7 @@ function expectedFor(plain, k) {
 	return null;
 }
 
-module.exports = { runOne: runOne, makeRng: makeRng, expectedFor: expectedFor, mean: mean, CONFIGS: CONFIGS, THIRD: THIRD };
+module.exports = { BIASES: BIASES, N: N, runOne: runOne, makeRng: makeRng, expectedFor: expectedFor, mean: mean, CONFIGS: CONFIGS, THIRD: THIRD };
 if (require.main !== module) return;
 
 var periods = [], verified = true;

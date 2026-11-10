@@ -49,6 +49,22 @@ function start(meta) {
 		return out;
 	}
 	var ruleW = walletPath(P.map(function (p) { return p.ret > 0 ? 'buy' : (p.ret < 0 ? 'sell' : 'hold'); }));
+	// emotion (behavioural-bias) investors — same rules as experiments/emotion/run.js (PLAN.md); probabilities are assumptions
+	var EMO = ['disposition', 'overconfidence', 'chase'], EMO_SHORT = { disposition: '처분', overconfidence: '과신', chase: '추격' };
+	var THIRD = { buy: 1 / 3, sell: 1 / 3, hold: 1 / 3 };
+	function emoProbs(key, b, price, k, prices) {   // b = book before this decision, prices = decision prices so far (prices[k] = now)
+		if (key === 'disposition') {
+			if (b.btc > 0 && b.costUsd > 0) { var avg = b.costUsd / b.btc; if (price > avg) return { buy: 0.25, sell: 0.50, hold: 0.25 }; if (price < avg) return { buy: 5 / 12, sell: 1 / 6, hold: 5 / 12 }; }
+			return THIRD;
+		}
+		if (key === 'overconfidence') return b.cash + b.btc * price > R.capital ? { buy: 0.45, sell: 0.45, hold: 0.10 } : THIRD;
+		if (k < 3) return THIRD;
+		var r3 = prices[k] / prices[k - 3] - 1;
+		return r3 > 0.005 ? { buy: 0.80, sell: 0.10, hold: 0.10 } : (r3 < -0.005 ? { buy: 0.10, sell: 0.80, hold: 0.10 } : THIRD);
+	}
+	function pick(pr) { var u = Math.random(); return u < pr.buy ? 'buy' : (u < pr.buy + pr.sell ? 'sell' : 'hold'); }
+	function emoLine(v) { return EMO.map(function (key, i) { return EMO_SHORT[key] + ' ' + money(v[i]); }).join(' · '); }
+	function versus(d) { return '<b>' + money(Math.abs(d)).replace('+', '') + '</b> ' + (d >= 0 ? '나았' : '뒤졌'); }
 
 	/* ---------- renderer & scene ---------- */
 	var canvas = $('scene');
@@ -354,7 +370,9 @@ function start(meta) {
 		var f = fin ? st.info.equity.final : (k >= 0 ? st.info.equity.path[k] : 0);
 		var ru = fin ? meta.rule.final : (k >= 0 ? meta.rule.path[k] : 0);
 		var ra = fin ? meta.random.finalMean : (k >= 0 ? meta.random.meanPath[k] : 0);
-		[['flyPnl', f], ['rulePnl', ru], ['randPnl', ra]].forEach(function (x) { var el = $(x[0]); el.textContent = money(x[1]); el.className = 'n ' + (x[1] > 0.004 ? 'pos' : (x[1] < -0.004 ? 'neg' : '')); });
+		var ev = EMO.map(function (key) { var e = meta.emotion[key]; return fin ? e.finalMean : (k >= 0 ? e.meanPath[k] : 0); }), em = (ev[0] + ev[1] + ev[2]) / 3;
+		$('emoMeta').textContent = emoLine(ev) + (fin ? ' · 평균 주문 ' + (EMO.reduce(function (a, key) { return a + meta.emotion[key].ordersMean; }, 0) / 3).toFixed(1) + '건' : '');
+		[['flyPnl', f], ['emoPnl', em], ['rulePnl', ru], ['randPnl', ra]].forEach(function (x) { var el = $(x[0]); el.textContent = money(x[1]); el.className = 'n ' + (x[1] > 0.004 ? 'pos' : (x[1] < -0.004 ? 'neg' : '')); });
 		var w = k >= 0 ? st.wallet[k] : { orders: 0, fees: 0 }, rw = k >= 0 ? ruleW[k] : { orders: 0, fees: 0 };
 		$('flyMeta').textContent = '주문 ' + w.orders + ' · 수수료 $' + w.fees.toFixed(2);
 		$('ruleMeta').textContent = '주문 ' + rw.orders + ' · 수수료 $' + rw.fees.toFixed(2);
@@ -363,9 +381,11 @@ function start(meta) {
 			var mt = meta.matched, mr = mt.perRep[st.rep];
 			var mEl = $('matchPnl'); mEl.textContent = money(mr.expected); mEl.className = 'n ' + (mr.expected > 0.004 ? 'pos' : (mr.expected < -0.004 ? 'neg' : ''));
 			$('matchMeta').textContent = '초파리처럼 주문 ' + mr.orders + '건만 한 무작위 투자자';
-			$('final').innerHTML = '끝. 초파리는 규칙 투자자보다 <b>' + money(st.info.equity.final - meta.rule.final).replace('+', '') + '</b> 나았고, 그 차이는 대부분 수수료 차이(<b>$' + (meta.rule.fees - st.info.equity.fees).toFixed(2) + '</b>)입니다. ' +
-				'주문 수가 같은 무작위 투자자와 비교하면 이 회차는 <b>' + money(mr.residual) + '</b>, ' + mt.runs + '번 돌린 전체 평균은 <b>' + money(mt.mean) + '</b>(95% 신뢰구간 ' + money(mt.lo) + ' ~ ' + money(mt.hi) + ')로 0과 구별되지 않습니다. 한 회차의 큰 이익은 운으로도 나옵니다.';
-		} else { $('final').textContent = '결정 ' + Math.max(0, st.decided) + ' / ' + P.length + ' · 손익은 그 시각 시세로 평가'; $('matchPnl').textContent = '끝나면 표시'; $('matchPnl').className = 'n pending'; $('matchMeta').textContent = '초파리와 주문 수가 같은 무작위 투자자'; }
+			var fF = st.info.equity.final, eo = EMO.reduce(function (a, key) { return a + meta.emotion[key].ordersMean; }, 0) / 3;
+			$('final').innerHTML = '끝. 이 회차 초파리(주문 ' + w.orders + '건)는 감정 투자자 평균(약 ' + eo.toFixed(0) + '건)보다 ' + versus(fF - em) + '고, 감정 없는 기계 투자자(' + rw.orders + '건)보다 ' + versus(fF - meta.rule.final) + '습니다. ' +
+				'기계 투자자와의 차이는 대부분 수수료 차이(<b>$' + (meta.rule.fees - st.info.equity.fees).toFixed(2) + '</b>)입니다. ' +
+				'거래량이 같은 무작위 투자자와 비교하면 이 회차는 <b>' + money(mr.residual) + '</b>, ' + mt.runs + '번 돌린 전체 평균은 <b>' + money(mt.mean) + '</b>(95% 신뢰구간 ' + money(mt.lo) + ' ~ ' + money(mt.hi) + ')로 0과 구별되지 않습니다. 한 기간·한 회차의 결과는 운으로도 크게 달라집니다(소논문은 6개 기간으로 비교).';
+		} else { $('final').textContent = '결정 ' + Math.max(0, st.decided) + ' / ' + P.length + ' · 손익은 그 시각 시세로 평가'; $('matchPnl').textContent = '끝나면 표시'; $('matchPnl').className = 'n pending'; $('matchMeta').textContent = '초파리만큼만 거래하는 무작위 투자자'; }
 	}
 
 	var WALK = 0.42, STIM = 0.8, TICK = 0.045, ACT = 1.1;
@@ -436,12 +456,12 @@ function start(meta) {
 	function kstDay(tSec) { var d = new Date((tSec + 9 * 3600) * 1000); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate() + ' ' + String(d.getUTCHours()).padStart(2, '0') + '시'; }
 	function kst(tSec) { return new Date(tSec * 1000).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul' }); }
 	function setNote(html) { $('note').innerHTML = html; }
-	function emptyBook() { return { cash: R.capital, btc: 0, fees: 0, orders: 0, perDay: {} }; }
+	function emptyBook() { return { cash: R.capital, btc: 0, fees: 0, orders: 0, perDay: {}, costUsd: 0 }; }
 	function trade(b, a, price, tSec) {   // same order rules as experiments/lib/market.js
 		var day = new Date(tSec * 1000).toISOString().slice(0, 10), reserve = R.capital * R.reserveRate, done = 'hold';
 		if ((a === 'buy' || a === 'sell') && (b.perDay[day] || 0) < R.maxOrdersPerDay) {
-			if (a === 'buy') { var usd = Math.min(R.orderUsd, (b.cash - reserve) / (1 + R.feeRate)); if (usd > 0.005) { b.cash -= usd * (1 + R.feeRate); b.fees += usd * R.feeRate; b.btc += usd / price; done = 'buy'; } }
-			else { var u2 = Math.min(R.orderUsd, b.btc * price); if (u2 > 0.005) { b.btc -= u2 / price; if (b.btc < 1e-15) b.btc = 0; b.cash += u2 * (1 - R.feeRate); b.fees += u2 * R.feeRate; done = 'sell'; } }
+			if (a === 'buy') { var usd = Math.min(R.orderUsd, (b.cash - reserve) / (1 + R.feeRate)); if (usd > 0.005) { b.cash -= usd * (1 + R.feeRate); b.fees += usd * R.feeRate; b.btc += usd / price; b.costUsd += usd * (1 + R.feeRate); done = 'buy'; } }
+			else { var u2 = Math.min(R.orderUsd, b.btc * price); if (u2 > 0.005) { b.costUsd -= b.costUsd * ((u2 / price) / b.btc); b.btc -= u2 / price; if (b.btc < 1e-15) { b.btc = 0; b.costUsd = 0; } b.cash += u2 * (1 - R.feeRate); b.fees += u2 * R.feeRate; done = 'sell'; } }
 			if (done !== 'hold') { b.perDay[day] = (b.perDay[day] || 0) + 1; b.orders++; }
 		}
 		return done;
@@ -457,13 +477,14 @@ function start(meta) {
 		}
 		playing = false; MODE = kind; document.body.classList.add('is-live');
 		var cfg = LIVE_SET[kind];
-		LV = { kind: kind, cfg: cfg, candles: {}, lastDecMin: null, decisions: [], fly: emptyBook(), rule: emptyBook(), rnd: [], phase: 'idle', t: 0, tick: 0, cur: null,
+		LV = { kind: kind, cfg: cfg, candles: {}, lastDecMin: null, decisions: [], fly: emptyBook(), rule: emptyBook(), rnd: [], mrnd: [], emo: {}, prices: [], phase: 'idle', t: 0, tick: 0, cur: null,
 			worker: null, hist: {}, ready: false, lastFetch: 0, lastOk: null, err: null, started: Date.now() / 1000, pending: null };
-		for (var i = 0; i < RANDOM_N; i++) LV.rnd.push(emptyBook());
+		for (var i = 0; i < RANDOM_N; i++) { LV.rnd.push(emptyBook()); LV.mrnd.push(emptyBook()); }
+		EMO.forEach(function (key) { LV.emo[key] = []; for (var j = 0; j < RANDOM_N; j++) LV.emo[key].push(emptyBook()); });
 		glow.fill(0); paintBrain(); setDN(0, 0); clearRaster();
 		$('decTitle').textContent = '실시간 · ' + cfg.label; $('ret').textContent = '—'; $('stim').textContent = '—'; $('dval').textContent = '—';
 		setVerdict('준비 중', '뇌 데이터와 시세를 불러옵니다', COL.neuron); setReadout('실시간 모드 준비 중', COL.neuron);
-		$('play').textContent = '■ 실시간 정지'; $('retLabel').textContent = cfg.every === 1 ? '직전 1분' : '직전 1시간'; $('randMeta').textContent = '매수·매도·보유 1/3씩, ' + RANDOM_N.toLocaleString() + '명 (지금부터)';
+		$('play').textContent = '■ 실시간 정지'; $('retLabel').textContent = cfg.every === 1 ? '직전 1분' : '직전 1시간'; $('randMeta').textContent = '매수·매도·보유 1/3씩, ' + RANDOM_N.toLocaleString() + '명 (지금부터)'; $('emoMeta').textContent = '3종 각 ' + RANDOM_N.toLocaleString() + '명 (지금부터)';
 		setNote('실시간 모드: 코인베이스 BTC-USD 현재가를 5초마다 받아 1분봉을 만들고, ' + cfg.label + '. 뇌는 이 컴퓨터에서 직접 계산합니다. 실제 돈은 쓰지 않는 모의 거래예요.');
 		var w = new Worker('brain-worker.js'); LV.worker = w;
 		w.onmessage = function (e) { var m = e.data; if (!LV || LV.worker !== w) return;
@@ -479,16 +500,17 @@ function start(meta) {
 		if (LV && LV.worker) LV.worker.terminate();
 		LV = null; MODE = 'replay'; document.body.classList.remove('is-live'); $('mode').value = 'replay';
 		setNote('드래그해서 돌려 보세요. 연결 강도는 실험용으로 20배 키운 설정이에요. 뇌의 점 하나하나가 실제 FlyWire 뉴런 위치이고, 기록된 시뮬레이션에서 발화한 틱에만 빛납니다.');
-		$('play').textContent = '▶ 재생'; $('retLabel').textContent = '직전 1시간'; $('randMeta').textContent = '매수·매도·보유 1/3씩, 1만 명'; reset(st.rep);
+		$('play').textContent = '▶ 재생'; $('retLabel').textContent = '직전 1시간'; $('randMeta').textContent = '매수·매도·보유 1/3씩, 1만 명'; $('emoMeta').textContent = '처분 효과 · 과신 · 추격 매수·공포 매도, 각 1만 명'; reset(st.rep);
 	}
 	function livePoll() {
-		if (!LV) return; LV.lastFetch = Date.now();
+		if (!LV) return; LV.lastFetch = Date.now(); var mine = LV;   // ignore answers that arrive after live mode was stopped
 		function get(u) { return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
 		get(SPOT).catch(function () { return get(SPOT_FALLBACK); }).then(function (j) {
+			if (LV !== mine) return;
 			var p = parseFloat(j.price != null ? j.price : (j.data && j.data.amount)), m = nowMin(); if (!(p > 0)) throw new Error('가격 없음');
 			var c = LV.candles[m]; if (!c) LV.candles[m] = [m * 60, p, p, p, p, 0]; else { c[2] = Math.max(c[2], p); c[3] = Math.min(c[3], p); c[4] = p; }
 			LV.lastOk = Date.now(); LV.err = null; liveDraw(); livePnl();
-		}).catch(function (e) { LV.err = '시세를 못 받았어요 (' + e.message + '). 인터넷 연결을 확인해 주세요.'; liveDraw(); });
+		}).catch(function (e) { if (LV !== mine) return; LV.err = '시세를 못 받았어요 (' + e.message + '). 인터넷 연결을 확인해 주세요.'; liveDraw(); });
 	}
 	// Coinbase's own 1-minute candles: fill minutes this page missed (e.g. computer asleep) and add volume.
 	// Minutes this page watched in the last 3 minutes keep the page's own prices.
@@ -597,6 +619,9 @@ function start(meta) {
 		var c = LV.cur, res = c.res, ex = trade(LV.fly, res.action, c.price, c.t);
 		trade(LV.rule, c.ret > 0 ? 'buy' : (c.ret < 0 ? 'sell' : 'hold'), c.price, c.t);
 		LV.rnd.forEach(function (b) { var u = Math.random(); trade(b, u < 1 / 3 ? 'buy' : (u < 2 / 3 ? 'sell' : 'hold'), c.price, c.t); });
+		LV.mrnd.forEach(function (b) { trade(b, pick(meta.flyRates), c.price, c.t); });   // fly's action rates, prices ignored (paper's same-volume group)
+		LV.prices.push(c.price); var kk = LV.prices.length - 1;
+		EMO.forEach(function (key) { LV.emo[key].forEach(function (b) { trade(b, pick(emoProbs(key, b, c.price, kk, LV.prices)), c.price, c.t); }); });
 		var why = flyLimitHit(c.t) ? '오늘 주문 한도 ' + R.maxOrdersPerDay + '건을 다 써서' : (res.action === 'sell' ? '팔 BTC가 없어' : '쓸 수 있는 현금이 없어');
 		c.executed = ex; c.note = res.action === 'hold' ? '좌우 차이가 작아 보유' : (ex === 'hold' ? (res.action === 'sell' ? '매도' : '매수') + ' 신호 · ' + why + ' 주문 안 됨' : '');
 		LV.decisions.push(c); LV.phase = 'act'; LV.t = 0; beam.material.opacity = 0;
@@ -611,17 +636,20 @@ function start(meta) {
 	function livePnl() {
 		var last = liveSeries(1)[0], price = last ? last[4] : null;
 		function show(id, v) { var el = $(id); if (v == null) { el.textContent = '—'; el.className = 'n'; return; } el.textContent = money(v); el.className = 'n ' + (v > 0.004 ? 'pos' : (v < -0.004 ? 'neg' : '')); }
-		if (!price) { ['flyPnl', 'rulePnl', 'randPnl', 'matchPnl'].forEach(function (id) { show(id, null); });
-			$('flyMeta').textContent = '주문 0'; $('ruleMeta').textContent = '주문 0'; $('matchMeta').textContent = '초파리와 주문 수가 같은 무작위 투자자';
+		if (!price) { ['flyPnl', 'emoPnl', 'rulePnl', 'randPnl', 'matchPnl'].forEach(function (id) { show(id, null); });
+			$('flyMeta').textContent = '주문 0'; $('ruleMeta').textContent = '주문 0'; $('matchMeta').textContent = '초파리만큼만 거래하는 무작위 투자자';
 			$('final').textContent = '실시간 모드 · 코인베이스 현재가를 받는 중'; return; }
 		show('flyPnl', value(LV.fly, price)); show('rulePnl', value(LV.rule, price));
 		var sum = 0; LV.rnd.forEach(function (b) { sum += value(b, price); }); show('randPnl', sum / LV.rnd.length);
-		var same = LV.rnd.filter(function (b) { return b.orders === LV.fly.orders; });
-		if (same.length < 20) same = LV.rnd.filter(function (b) { return Math.abs(b.orders - LV.fly.orders) <= 1; });
+		var ev = EMO.map(function (key) { var s2 = 0; LV.emo[key].forEach(function (b) { s2 += value(b, price); }); return s2 / RANDOM_N; });
+		show('emoPnl', (ev[0] + ev[1] + ev[2]) / 3); $('emoMeta').textContent = emoLine(ev) + ' · 각 ' + RANDOM_N.toLocaleString() + '명';
+		// same-volume group: investors drawn with the fly's action rates who executed as many orders as the fly (widened until >= 20 people)
+		var same = [];
+		for (var wdt = 0; wdt <= 26 && same.length < 20; wdt++) same = LV.mrnd.filter(function (b) { return Math.abs(b.orders - LV.fly.orders) <= wdt; });
 		var ms = 0; same.forEach(function (b) { ms += value(b, price); }); show('matchPnl', same.length ? ms / same.length : null);
 		$('flyMeta').textContent = '주문 ' + LV.fly.orders + ' · 수수료 $' + LV.fly.fees.toFixed(2);
 		$('ruleMeta').textContent = '주문 ' + LV.rule.orders + ' · 수수료 $' + LV.rule.fees.toFixed(2);
-		$('matchMeta').textContent = '주문 수가 같은 무작위 투자자 ' + same.length + '명 (전체 ' + RANDOM_N.toLocaleString() + '명 중)';
+		$('matchMeta').textContent = '초파리와 주문 수가 같은 ' + same.length + '명 (초파리 행동 비율로 뽑은 ' + RANDOM_N.toLocaleString() + '명 중)';
 		$('final').textContent = '실시간 결정 ' + LV.decisions.length + '번 · ' + kst(LV.started) + '부터 · 손익은 지금 시세로 평가. 결정이 적을 때 숫자 차이는 대부분 운입니다.';
 	}
 
